@@ -1,0 +1,13 @@
+.block-renderer {
+  position: relative;
+}
+
+.block-renderer--compact {
+  transform: scale(0.85);
+  transform-origin: top left;
+}
+
+.block-renderer--slot-fit {
+  width: fit-content;
+  max-width: none;
+}

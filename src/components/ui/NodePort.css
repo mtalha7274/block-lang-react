@@ -1,0 +1,74 @@
+.port-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.port-wrap__label {
+  font-size: 11px;
+  color: var(--text);
+  font-family: var(--mono);
+}
+
+.port {
+  width: var(--port-size);
+  height: var(--port-size);
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--block-bg);
+  flex-shrink: 0;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.port--number {
+  border-color: var(--type-number);
+}
+
+.port--string {
+  border-color: var(--type-string);
+}
+
+.port--boolean {
+  border-color: var(--type-boolean);
+}
+
+.port--void {
+  border-color: var(--type-void);
+}
+
+.port--connected {
+  background: currentColor;
+  box-shadow: 0 0 0 var(--port-connected-ring)
+    color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.port--number.port--connected {
+  color: var(--type-number);
+  background: var(--type-number);
+}
+
+.port--string.port--connected {
+  color: var(--type-string);
+  background: var(--type-string);
+}
+
+.port--boolean.port--connected {
+  color: var(--type-boolean);
+  background: var(--type-boolean);
+}
+
+.port--void.port--connected {
+  color: var(--type-void);
+  background: var(--type-void);
+}
+
+.port--invalid {
+  border-color: var(--block-error-border);
+  border-style: dashed;
+  background: var(--block-error-bg);
+  cursor: not-allowed;
+}
+
+.connection-blocked .port {
+  cursor: not-allowed;
+}

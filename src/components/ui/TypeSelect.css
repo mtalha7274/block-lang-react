@@ -1,0 +1,37 @@
+.type-select {
+  padding: 4px 24px 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font);
+  color: var(--text-h);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236b6375' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  min-width: 88px;
+}
+
+.type-select:disabled {
+  opacity: 0.85;
+  cursor: default;
+}
+
+.type-select--number {
+  border-color: color-mix(in srgb, var(--type-number) 40%, var(--border));
+}
+
+.type-select--string {
+  border-color: color-mix(in srgb, var(--type-string) 40%, var(--border));
+}
+
+.type-select--boolean {
+  border-color: color-mix(in srgb, var(--type-boolean) 40%, var(--border));
+}
+
+.type-select--void {
+  border-color: var(--border);
+}

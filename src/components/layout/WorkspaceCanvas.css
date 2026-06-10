@@ -1,0 +1,91 @@
+.workspace {
+  height: 100%;
+  background: var(--canvas-bg);
+}
+
+.workspace__scroll {
+  height: 100%;
+  overflow: auto;
+}
+
+.workspace__surface {
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
+  background-image: radial-gradient(
+    circle,
+    var(--canvas-grid) var(--canvas-dot-size),
+    transparent var(--canvas-dot-size)
+  );
+  background-size: 24px 24px;
+  transition: background-color 0.2s;
+}
+
+.workspace__surface--drag-over {
+  background-color: color-mix(in srgb, var(--accent-bg) 60%, var(--canvas-bg));
+  outline: 3px dashed var(--accent-border);
+  outline-offset: -3px;
+}
+
+.canvas-block {
+  display: flex;
+  flex-direction: column;
+  background: var(--block-bg);
+  border: 2px solid var(--block-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  min-width: 160px;
+  width: fit-content;
+  min-height: min-content;
+}
+
+.canvas-block__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--code-bg);
+  border-bottom: 2px solid var(--border);
+  border-radius: 14px 14px 0 0;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.canvas-block__header:active {
+  cursor: grabbing;
+}
+
+.canvas-block__grip {
+  color: var(--text);
+  opacity: 0.45;
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.canvas-block__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.canvas-block__body {
+  padding: 0;
+  overflow: auto;
+  min-height: 0;
+}
+
+.canvas-block__body .block,
+.canvas-block__body .puzzle-strip {
+  border: none;
+  box-shadow: none;
+  border-radius: 0 0 14px 14px;
+}
+
+.canvas-block__body .puzzle-strip--main {
+  border-radius: 0 0 14px 14px;
+  min-width: 0;
+  max-width: none;
+}

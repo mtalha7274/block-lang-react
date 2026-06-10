@@ -1,0 +1,10 @@
+.value-source-out-port {
+  display: inline-flex;
+  align-items: center;
+  cursor: grab;
+  padding: 2px;
+}
+
+.value-source-out-port:active {
+  cursor: grabbing;
+}

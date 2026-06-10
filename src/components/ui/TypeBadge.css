@@ -1,0 +1,35 @@
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  text-transform: lowercase;
+  border: 1px solid transparent;
+}
+
+.type-badge--number {
+  color: var(--type-number);
+  background: color-mix(in srgb, var(--type-number) 12%, transparent);
+  border-color: color-mix(in srgb, var(--type-number) 35%, transparent);
+}
+
+.type-badge--string {
+  color: var(--type-string);
+  background: color-mix(in srgb, var(--type-string) 12%, transparent);
+  border-color: color-mix(in srgb, var(--type-string) 35%, transparent);
+}
+
+.type-badge--boolean {
+  color: var(--type-boolean);
+  background: color-mix(in srgb, var(--type-boolean) 12%, transparent);
+  border-color: color-mix(in srgb, var(--type-boolean) 35%, transparent);
+}
+
+.type-badge--void {
+  color: var(--type-void);
+  background: color-mix(in srgb, var(--type-void) 12%, transparent);
+  border-color: color-mix(in srgb, var(--type-void) 35%, transparent);
+}

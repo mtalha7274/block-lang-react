@@ -1,0 +1,31 @@
+.expression-block__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.expression-block__row--nested {
+  flex-direction: column;
+  align-items: stretch;
+  width: auto;
+  min-width: min-content;
+}
+
+.expression-block__row--nested .slot {
+  flex: 0 1 auto;
+  min-width: min-content;
+  width: auto;
+}
+
+.expression-block__eq {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.expression-block__row .slot {
+  min-width: 80px;
+}

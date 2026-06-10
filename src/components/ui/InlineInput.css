@@ -1,0 +1,19 @@
+.inline-input {
+  display: inline-block;
+  min-width: 48px;
+  padding: 3px 8px;
+  font-size: 13px;
+  color: var(--text-h);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.inline-input--mono {
+  font-family: var(--mono);
+}
+
+.inline-input:focus {
+  outline: none;
+}

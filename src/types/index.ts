@@ -1,0 +1,45 @@
+export type {
+  BlockId,
+  ValueType,
+  BlockKind,
+  BlockCategory,
+  BlockVisualState,
+  OperatorSymbol,
+  BlockVisualFlags,
+  BlockLayoutOverride,
+  RenderChildOptions,
+  PrimitiveBlockData,
+  VariableBlockData,
+  TypeParamRow,
+  TypeBlockData,
+  ExpressionBlockData,
+  IfBlockData,
+  ForLoopBlockData,
+  WhileLoopBlockData,
+  FunctionParameter,
+  FunctionBlockData,
+  FunctionCallArgument,
+  FunctionCallBlockData,
+  MainFunctionBlockData,
+  BlockData,
+  BlockNode,
+} from './block'
+
+export type {
+  BlockPlacement,
+  PortRef,
+  ConnectionEdge,
+  ProgramDocument,
+  SlotTarget,
+  StatementBodyRegion,
+} from './program'
+
+export type { Variant, Size, PanelTab, PortDirection } from './ui'
+
+export type {
+  EmulationStatus,
+  VariableSnapshot,
+  StackFrame,
+  EmulationHighlight,
+  OutputLine,
+} from './emulation'

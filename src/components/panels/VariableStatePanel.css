@@ -1,0 +1,37 @@
+.var-panel__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.var-panel__table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.var-panel__table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.var-panel__name,
+.var-panel__value {
+  font-family: var(--mono);
+  color: var(--text-h);
+}
+
+.var-panel__row--active {
+  background: var(--accent-bg);
+  outline: 1px solid var(--accent-border);
+}
+
+.var-panel__row--active td:first-child {
+  border-left: 3px solid var(--accent);
+}

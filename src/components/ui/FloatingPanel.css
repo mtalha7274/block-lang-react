@@ -1,0 +1,98 @@
+.floating-panel {
+  position: absolute;
+  background: var(--block-bg);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  max-height: calc(100svh - var(--toolbar-height) - 32px);
+  display: flex;
+  flex-direction: column;
+}
+
+.floating-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--code-bg);
+  border-bottom: 2px solid var(--border);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.floating-panel__header:active {
+  cursor: grabbing;
+}
+
+.floating-panel__grip {
+  color: var(--text);
+  opacity: 0.45;
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.floating-panel__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.floating-panel__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.floating-panel__subtitle {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0.65;
+}
+
+.floating-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.floating-panel__header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.floating-panel__header-btn--minimize:hover {
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+  color: var(--text-h);
+}
+
+.floating-panel__header-btn--delete {
+  color: var(--block-error-border);
+}
+
+.floating-panel__header-btn--delete:hover {
+  background: color-mix(in srgb, var(--block-error-border) 15%, transparent);
+  color: var(--block-error-border);
+}
+
+.floating-panel__body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}

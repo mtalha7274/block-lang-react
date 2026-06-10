@@ -1,0 +1,13 @@
+.while-loop__body {
+  margin-top: 8px;
+  min-width: min-content;
+}
+
+.while-loop__body-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  margin-bottom: 6px;
+}

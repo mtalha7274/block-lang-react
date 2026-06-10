@@ -1,0 +1,18 @@
+.for-loop__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.for-loop__body {
+  min-width: min-content;
+}
+
+.for-loop__body-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  margin-bottom: 6px;
+}

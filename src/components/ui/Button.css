@@ -1,0 +1,77 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  font-weight: 600;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+
+.btn--sm {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.btn--md {
+  font-size: 13px;
+  padding: 6px 14px;
+}
+
+.btn--lg {
+  font-size: 14px;
+  padding: 8px 18px;
+}
+
+.btn--primary {
+  color: #fff;
+  background: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 80%, #000);
+  box-shadow: var(--shadow-playful);
+}
+
+.btn--primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.btn--primary:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.btn--secondary {
+  color: var(--text-h);
+  background: var(--code-bg);
+  border-color: var(--border);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  border-color: var(--accent-border);
+}
+
+.btn--ghost {
+  color: var(--text);
+  background: transparent;
+  border-color: transparent;
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--code-bg);
+}
+
+.btn--active {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

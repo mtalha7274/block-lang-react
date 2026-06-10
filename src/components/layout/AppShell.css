@@ -1,0 +1,29 @@
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.app-shell__toolbar {
+  flex-shrink: 0;
+  height: var(--toolbar-height);
+  border-bottom: 2px solid var(--border);
+  z-index: 30;
+}
+
+.app-shell__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell__workspace {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
