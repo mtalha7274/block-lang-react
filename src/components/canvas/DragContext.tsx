@@ -37,6 +37,7 @@ export interface DragContextValue {
   ) => void
   updateFunctionCallName: (blockId: string, name: string) => void
   updateExpressionOperator: (blockId: string, operator: OperatorSymbol) => void
+  updateExpressionResultName: (blockId: string, name: string) => void
   updateBlockLayout: (blockId: string, layout: BlockLayoutOverride | null) => void
   hoverPreviewSize: HoverPreviewSize | null
   referenceDragPosition: { x: number; y: number } | null
@@ -47,6 +48,12 @@ export interface DragContextValue {
   onBlockDragEnd: () => void
   onReferenceDragStart: (sourceBlockId: string) => (e: React.PointerEvent) => void
   onReferenceDragEnd: () => void
+  onNestedChipPointerDown?: (
+    blockId: string,
+    e: React.PointerEvent,
+    anchorEl: HTMLElement,
+    openEditor: (anchor: HTMLElement) => void,
+  ) => void
   handleSlotDragOver?: (
     target: SlotTarget,
     expectedType?: ValueType,
@@ -90,6 +97,7 @@ export function useDragContext(): DragContextValue {
       updateTypeParamRow: () => {},
       updateFunctionCallName: () => {},
       updateExpressionOperator: () => {},
+      updateExpressionResultName: () => {},
       updateBlockLayout: () => {},
       hoverPreviewSize: null,
       referenceDragPosition: null,
@@ -100,6 +108,7 @@ export function useDragContext(): DragContextValue {
       onBlockDragEnd: () => {},
       onReferenceDragStart: () => () => {},
       onReferenceDragEnd: () => {},
+      onNestedChipPointerDown: undefined,
       openBlockEditor: () => {},
       closeBlockEditor: () => {},
       closeNestedEditors: () => {},

@@ -287,20 +287,5 @@ export const sampleProgram: ProgramDocument = {
     { blockId: 'demo-for', x: 340, y: 480 },
     { blockId: 'demo-while', x: 680, y: 480 },
   ],
-  connections: [
-    {
-      id: 'edge-call-func',
-      from: { blockId: 'call-add', portId: 'out' },
-      to: { blockId: 'func-add', portId: 'in' },
-      type: 'number',
-      valid: true,
-    },
-    {
-      id: 'edge-invalid-demo',
-      from: { blockId: 'var-bad', portId: 'out' },
-      to: { blockId: 'func-add', portId: 'param-a' },
-      type: 'string',
-      valid: false,
-    },
-  ],
+  connections: [],
 }

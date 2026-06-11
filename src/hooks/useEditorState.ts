@@ -13,7 +13,7 @@ import { emptyProgram } from '../constants/emptyProgram'
 import { createBlockFromKind } from '../constants/blockDefaults'
 import {
   canStatementBodyAcceptBlock,
-  canSlotAcceptBlock,
+  canValueSlotAcceptBlock,
   canTypeVariableAcceptBlock,
   canFunctionSignatureAcceptBlock,
   canCallArgAcceptBlock,
@@ -45,9 +45,12 @@ import {
   updateForIncrement,
   updateWhileCondition,
 } from '../lib/program/blockTree'
-import { deriveTypeParams } from '../lib/program/typeParams'
 import { createDefaultPanelPositions } from '../lib/workspace/panelDefaults'
 import { getInScopeValuesForConsumer, isValueSourceBlock } from '../lib/program/scope'
+import {
+  findFunctionByName,
+  linkFunctionCallToTarget,
+} from '../lib/program/callWire'
 import {
   createValueRefFromSource,
   getUsageInPortId,
@@ -100,14 +103,14 @@ function slotAcceptsReference(
   if (target.kind === 'variable-value') {
     const parent = findBlockInTree(blocks, target.parentBlockId)
     if (parent?.kind !== 'variable') return false
-    return canSlotAcceptBlock(parent.data.valueType, valueRef)
+    return canValueSlotAcceptBlock(parent.data.valueType, valueRef)
   }
   if (target.kind === 'call-arg') {
     const parent = findBlockInTree(blocks, target.parentBlockId)
     if (parent?.kind !== 'functionCall') return false
     const arg = parent.data.arguments.find((a) => a.portId === target.argPortId)
     if (!arg) return false
-    return canSlotAcceptBlock(arg.type, valueRef)
+    return canCallArgAcceptBlock(arg.type, valueRef)
   }
   if (target.kind === 'expression-operand') {
     const parent = findBlockInTree(blocks, target.parentBlockId)
@@ -427,48 +430,12 @@ export function useEditorState() {
   const updateFunctionCallName = useCallback(
     (blockId: string, name: string) => {
       setProgram((prev) => {
-        const fn = prev.blocks.find(
-          (b) => b.kind === 'function' && b.data.name === name,
-        )
-        return {
-          ...prev,
-          blocks: updateBlockInTree(prev.blocks, blockId, (block) => {
-            if (block.kind !== 'functionCall') return block
-            if (!fn || fn.kind !== 'function') {
-              return {
-                ...block,
-                data: {
-                  ...block.data,
-                  functionName: name,
-                  targetFunctionId: undefined,
-                  arguments: [],
-                },
-              }
-            }
-            const params = fn.data.signature
-              ? deriveTypeParams(fn.data.signature)
-              : []
-            return {
-              ...block,
-              data: {
-                functionName: name,
-                targetFunctionId: fn.id,
-                returnType: fn.data.returnType,
-                arguments: params.map((p) => {
-                  const existing = block.data.arguments.find(
-                    (a) => a.name === p.name,
-                  )
-                  return {
-                    portId: p.id,
-                    name: p.name,
-                    type: p.type,
-                    value: existing?.value,
-                  }
-                }),
-              },
-            }
-          }),
-        }
+        const fn = findFunctionByName(prev.blocks, name)
+        const blocks = updateBlockInTree(prev.blocks, blockId, (block) => {
+          if (block.kind !== 'functionCall') return block
+          return linkFunctionCallToTarget(block, fn, name)
+        })
+        return applyProgramUpdate(prev, blocks)
       })
     },
     [],
@@ -496,6 +463,18 @@ export function useEditorState() {
     },
     [],
   )
+
+  const updateExpressionResultName = useCallback((blockId: string, name: string) => {
+    setProgram((prev) =>
+      applyProgramUpdate(
+        prev,
+        updateBlockInTree(prev.blocks, blockId, (block) => {
+          if (block.kind !== 'expression') return block
+          return { ...block, data: { ...block.data, resultName: name } }
+        }),
+      ),
+    )
+  }, [])
 
   const updateBlockLayout = useCallback(
     (blockId: string, layout: BlockLayoutOverride | null) => {
@@ -533,7 +512,7 @@ export function useEditorState() {
         }
       }
 
-      if (!canSlotAcceptBlock(parent.data.valueType, blockToAttach)) {
+      if (!canValueSlotAcceptBlock(parent.data.valueType, blockToAttach)) {
         return { next: prev, accepted: false }
       }
       return {
@@ -556,6 +535,13 @@ export function useEditorState() {
       if (!parent || !isValidStatementBodyParent(parent, target.region)) {
         return { next: prev, accepted: false }
       }
+      let blockToAttach = block
+      if (block.kind === 'functionCall') {
+        const fn = findFunctionByName(prev.blocks, block.data.functionName)
+        if (fn) {
+          blockToAttach = linkFunctionCallToTarget(block, fn)
+        }
+      }
       return {
         next: {
           ...prev,
@@ -563,7 +549,7 @@ export function useEditorState() {
             prev.blocks.filter((b) => b.id !== block.id),
             target.parentBlockId,
             target.region,
-            block,
+            blockToAttach,
           ),
           placements: prev.placements.filter((p) => p.blockId !== block.id),
         },
@@ -799,13 +785,18 @@ export function useEditorState() {
         }
 
         const inTree = findBlockInTree(prev.blocks, blockId)
-        if (inTree && isValueSourceBlock(inTree)) {
-          const result = assignReferenceToSlot(prev, blockId, target)
-          accepted = result.accepted
-          return result.next
-        }
+        if (!inTree) return prev
 
-        return prev
+        const detachedBlocks = detachBlockFromTree(prev.blocks, blockId)
+        const result = attachBlockToSlotInner(
+          { ...prev, blocks: detachedBlocks },
+          inTree,
+          target,
+        )
+        accepted = result.accepted
+        return result.accepted
+          ? applyProgramUpdate(result.next, result.next.blocks)
+          : prev
       })
       return accepted
     },
@@ -901,6 +892,7 @@ export function useEditorState() {
     updateTypeParamRow,
     updateFunctionCallName,
     updateExpressionOperator,
+    updateExpressionResultName,
     updateBlockLayout,
     attachBlockIdToSlot,
     assignInScopeReference,

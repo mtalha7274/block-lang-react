@@ -6,6 +6,8 @@ import './ConnectionLayer.css'
 interface ConnectionLayerProps {
   edges: ConnectionEdge[]
   blockIds: string[]
+  /** When true, measure port positions relative to the nearest canvas-blocks-layer ancestor. */
+  useCanvasCoordinates?: boolean
 }
 
 interface RenderedEdge {
@@ -13,14 +15,25 @@ interface RenderedEdge {
   path: string
   valid: boolean
   type: string
+  purpose?: 'usage' | 'wire'
 }
 
-export function ConnectionLayer({ edges, blockIds }: ConnectionLayerProps) {
+export function ConnectionLayer({
+  edges,
+  blockIds,
+  useCanvasCoordinates = false,
+}: ConnectionLayerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [renderedEdges, setRenderedEdges] = useState<RenderedEdge[]>([])
 
   useEffect(() => {
-    const container = containerRef.current?.parentElement
+    const layerEl = containerRef.current
+    if (!layerEl) return
+
+    const container = useCanvasCoordinates
+      ? (layerEl.closest('.canvas-blocks-layer') as HTMLElement | null) ??
+        layerEl.parentElement
+      : layerEl.parentElement
     if (!container) return
 
     const measure = () => {
@@ -40,6 +53,7 @@ export function ConnectionLayer({ edges, blockIds }: ConnectionLayerProps) {
             path: buildBezierPath(from, to),
             valid: edge.valid,
             type: edge.type,
+            purpose: edge.purpose,
           })
         }
       }
@@ -51,9 +65,13 @@ export function ConnectionLayer({ edges, blockIds }: ConnectionLayerProps) {
 
     const observer = new ResizeObserver(measure)
     observer.observe(container)
+    const localParent = layerEl.parentElement
+    if (localParent && localParent !== container) {
+      observer.observe(localParent)
+    }
 
     return () => observer.disconnect()
-  }, [edges, blockIds])
+  }, [edges, blockIds, useCanvasCoordinates])
 
   return (
     <div ref={containerRef} className="connection-layer" aria-hidden="true">

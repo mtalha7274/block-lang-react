@@ -6,9 +6,8 @@ import {
 } from '../../lib/validation/typeChecker'
 import { useDragContext } from '../canvas/DragContext'
 import { BlockShell } from './BlockShell'
-import { ReferencePill } from './ReferencePill'
 import { ValueSourceOutPort } from './ValueSourceOutPort'
-import { TypeBadge, InlineInput, BlockSlot, SelectField } from '../ui'
+import { TypeBadge, BlockSlot, SelectField } from '../ui'
 import './ExpressionBlock.css'
 
 interface ExpressionBlockProps {
@@ -28,6 +27,7 @@ export function ExpressionBlock({
   inStatementBody = false,
   inEditorPanel = false,
 }: ExpressionBlockProps) {
+  const slotChildOpts = { slotFit: true, nestedView: !inEditorPanel } as const
   const ctx = useDragContext()
   const { resultName, resultType, operator, left, right } = block.data
   const leftInvalid = left != null && !canExpressionOperandAcceptBlock(block, left)
@@ -57,8 +57,7 @@ export function ExpressionBlock({
     parentBlockId: block.id,
     side: 'right' as const,
   }
-  const showReferencePill = !inStatementBody && !inEditorPanel
-  const showOutPort = !inStatementBody && inEditorPanel
+  const showOutPort = !inStatementBody
 
   return (
     <BlockShell
@@ -73,12 +72,14 @@ export function ExpressionBlock({
       <div
         className={`expression-block__row${inStatementBody ? ' expression-block__row--nested' : ''}`}
       >
-        {resultName && (
-          <>
-            <InlineInput value={resultName} />
-            <span className="expression-block__eq">=</span>
-          </>
-        )}
+        <input
+          type="text"
+          className="expression-block__name"
+          value={resultName}
+          placeholder="name"
+          onChange={(e) => ctx.updateExpressionResultName(block.id, e.target.value)}
+        />
+        <span className="expression-block__eq">=</span>
         <BlockSlot
           slotTarget={leftSlotTarget}
           scopeConsumerId={block.id}
@@ -87,7 +88,7 @@ export function ExpressionBlock({
           expectedType={operandType}
           hint={`Drop a ${operandType} value here`}
         >
-          {left && renderChild ? renderChild(left, { slotFit: true, nestedView: false }) : null}
+          {left && renderChild ? renderChild(left, slotChildOpts) : null}
         </BlockSlot>
         <SelectField
           value={operator}
@@ -104,15 +105,9 @@ export function ExpressionBlock({
           expectedType={operandType}
           hint={`Drop a ${operandType} value here`}
         >
-          {right && renderChild ? renderChild(right, { slotFit: true, nestedView: false }) : null}
+          {right && renderChild ? renderChild(right, slotChildOpts) : null}
         </BlockSlot>
         <TypeBadge type={resultType} />
-        {showReferencePill && (
-          <ReferencePill
-            block={block}
-            onPointerDown={ctx.onReferenceDragStart(block.id)}
-          />
-        )}
         {showOutPort && (
           <ValueSourceOutPort
             block={block}

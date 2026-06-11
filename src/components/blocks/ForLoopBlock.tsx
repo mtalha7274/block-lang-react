@@ -9,6 +9,7 @@ interface ForLoopBlockProps {
   renderChild?: (node: BlockNode, opts?: RenderChildOptions) => React.ReactNode
   activeBlockId?: string
   compact?: boolean
+  inEditorPanel?: boolean
 }
 
 export function ForLoopBlock({
@@ -16,7 +17,9 @@ export function ForLoopBlock({
   renderChild,
   activeBlockId,
   compact = false,
+  inEditorPanel = false,
 }: ForLoopBlockProps) {
+  const slotChildOpts = { slotFit: true, nestedView: !inEditorPanel } as const
   const { init, condition, increment, body } = block.data
   const state =
     activeBlockId === block.id ? 'active' : block.visual?.state ?? 'default'
@@ -41,7 +44,7 @@ export function ForLoopBlock({
           filled={!!init}
           hint="Drop a number value for loop init"
         >
-          {init && renderChild ? renderChild(init, { slotFit: true, nestedView: false }) : null}
+          {init && renderChild ? renderChild(init, slotChildOpts) : null}
         </BlockSlot>
         <BlockSlot
           slotTarget={{ kind: 'for-condition', parentBlockId: block.id }}
@@ -51,9 +54,7 @@ export function ForLoopBlock({
           filled={!!condition}
           hint="Drop a boolean condition here"
         >
-          {condition && renderChild
-            ? renderChild(condition, { slotFit: true, nestedView: false })
-            : null}
+          {condition && renderChild ? renderChild(condition, slotChildOpts) : null}
         </BlockSlot>
         <BlockSlot
           slotTarget={{ kind: 'for-increment', parentBlockId: block.id }}
@@ -63,9 +64,7 @@ export function ForLoopBlock({
           filled={!!increment}
           hint="Drop a number value for loop increment"
         >
-          {increment && renderChild
-            ? renderChild(increment, { slotFit: true, nestedView: false })
-            : null}
+          {increment && renderChild ? renderChild(increment, slotChildOpts) : null}
         </BlockSlot>
         <div className="for-loop__body">
           <span className="for-loop__body-label">BODY</span>

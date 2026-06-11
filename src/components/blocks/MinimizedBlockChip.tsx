@@ -5,12 +5,17 @@ import './MinimizedBlockChip.css'
 
 interface MinimizedBlockChipProps {
   block: BlockNode
-  onClick: (anchorEl: HTMLElement) => void
+  onOpenEditor: (anchorEl: HTMLElement) => void
   onRemove: () => void
   onReferenceDragStart?: (e: React.PointerEvent) => void
+  onChipPointerDown?: (
+    e: React.PointerEvent,
+    anchorEl: HTMLElement,
+  ) => void
   isSelected?: boolean
   usageOutPort?: boolean
   usageInPortId?: string
+  callOutPort?: boolean
 }
 
 function formatPrimitiveValue(value: string | number | boolean, type: ValueType): string {
@@ -100,12 +105,14 @@ function chipTypeLabel(block: BlockNode): ValueType | null {
 
 export function MinimizedBlockChip({
   block,
-  onClick,
+  onOpenEditor,
   onRemove,
   onReferenceDragStart,
+  onChipPointerDown,
   isSelected = false,
   usageOutPort = false,
   usageInPortId,
+  callOutPort = false,
 }: MinimizedBlockChipProps) {
   const typeLabel = chipTypeLabel(block)
   const color = chipColor(block)
@@ -127,12 +134,25 @@ export function MinimizedBlockChip({
       {usageOutPort && (
         <span className="usage-anchor usage-anchor--out" data-port-id="value-out" aria-hidden />
       )}
+      {callOutPort && (
+        <span className="usage-anchor usage-anchor--out" data-port-id="call-out" aria-hidden />
+      )}
       <button
         type="button"
         className="minimized-chip__main"
-        onClick={(e) => {
+        onPointerDown={(e) => {
+          if ((e.target as HTMLElement).closest('.minimized-chip__link-grip, .minimized-chip__remove')) {
+            return
+          }
           const anchor = e.currentTarget.closest('[data-block-id]') as HTMLElement
-          if (anchor) onClick(anchor)
+          if (anchor && onChipPointerDown) {
+            onChipPointerDown(e, anchor)
+          }
+        }}
+        onClick={(e) => {
+          if (onChipPointerDown) return
+          const anchor = e.currentTarget.closest('[data-block-id]') as HTMLElement
+          if (anchor) onOpenEditor(anchor)
         }}
       >
         {typeLabel && (

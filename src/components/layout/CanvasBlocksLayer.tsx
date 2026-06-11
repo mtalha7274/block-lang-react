@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef, type RefObject } from 'react'
+import { useLayoutEffect, useMemo, useRef, type RefObject } from 'react'
 import type { BlockNode, ProgramDocument } from '../../types'
 import { blockRegistry } from '../../constants'
+import { mergeCanvasConnections } from '../../lib/program/callWire'
 import { computeCenteredMainPlacement } from '../../lib/workspace/centerMainBlock'
 import { BlockRenderer, CanvasBlockContext, ConnectionLayer, useDragContext } from '../canvas'
 import { ResizableContainer } from '../ui'
@@ -65,6 +66,7 @@ export function CanvasBlocksLayer({
     })
 
   const blockIds = topLevelBlocks.map((b) => b.id)
+  const allCanvasEdges = useMemo(() => mergeCanvasConnections(program), [program])
 
   const handleBlockFocus = (blockId: string) => (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button, input, select, textarea')) {
@@ -100,7 +102,11 @@ export function CanvasBlocksLayer({
 
   return (
     <div className="canvas-blocks-layer" aria-label="Canvas blocks">
-      <ConnectionLayer edges={program.connections} blockIds={blockIds} />
+      <ConnectionLayer
+        edges={allCanvasEdges}
+        blockIds={blockIds}
+        useCanvasCoordinates
+      />
 
       {topLevelBlocks.map((block) => {
         const placement = placementMap.get(block.id)!
@@ -153,7 +159,7 @@ export function CanvasBlocksLayer({
                     <BlockRenderer
                       block={block}
                       activeBlockId={activeBlockId}
-                      connections={program.connections}
+                      connections={allCanvasEdges}
                     />
                   </CanvasBlockContext.Provider>
                 </div>

@@ -9,6 +9,7 @@ interface IfBlockProps {
   renderChild?: (node: BlockNode, opts?: RenderChildOptions) => React.ReactNode
   activeBlockId?: string
   compact?: boolean
+  inEditorPanel?: boolean
   connections?: ConnectionEdge[]
 }
 
@@ -17,6 +18,7 @@ export function IfBlock({
   renderChild,
   activeBlockId,
   compact = false,
+  inEditorPanel = false,
   connections = [],
 }: IfBlockProps) {
   const { condition, trueBranch, falseBranch } = block.data
@@ -45,7 +47,9 @@ export function IfBlock({
         expectedType="boolean"
         filled={!!condition}
       >
-        {condition && renderChild ? renderChild(condition, { slotFit: true, nestedView: true }) : null}
+        {condition && renderChild
+          ? renderChild(condition, { slotFit: true, nestedView: !inEditorPanel })
+          : null}
       </BlockSlot>
       <div className="if-block__branches">
         <div className="if-block__branch if-block__branch--true">

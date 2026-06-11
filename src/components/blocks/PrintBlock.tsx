@@ -10,6 +10,7 @@ interface PrintBlockProps {
   activeBlockId?: string
   compact?: boolean
   inStatementBody?: boolean
+  inEditorPanel?: boolean
 }
 
 export function PrintBlock({
@@ -18,6 +19,7 @@ export function PrintBlock({
   activeBlockId,
   compact = false,
   inStatementBody = false,
+  inEditorPanel = false,
 }: PrintBlockProps) {
   const ctx = useDragContext()
   const { value } = block.data
@@ -49,7 +51,9 @@ export function PrintBlock({
           hint="Drop a value to print"
           filled={!!value}
         >
-          {value && renderChild ? renderChild(value, { slotFit: true, nestedView: true }) : null}
+          {value && renderChild
+            ? renderChild(value, { slotFit: true, nestedView: !inEditorPanel })
+            : null}
         </BlockSlot>
       </div>
     </PuzzleStrip>

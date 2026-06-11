@@ -3,7 +3,6 @@ import { typeColorMap } from '../../constants'
 import { useDragContext } from '../canvas/DragContext'
 import { PuzzleStrip } from './PuzzleStrip'
 import { TypeBadge, BlockSlot } from '../ui'
-import { ReferencePill } from './ReferencePill'
 import { ValueSourceOutPort } from './ValueSourceOutPort'
 import './FunctionCallBlock.css'
 
@@ -67,13 +66,7 @@ export function FunctionCallBlock({
           />
           <span className="function-call-block__arrow">→</span>
           <TypeBadge type={returnType} />
-          {!inStatementBody && !inEditorPanel && (
-            <ReferencePill
-              block={block}
-              onPointerDown={ctx.onReferenceDragStart(block.id)}
-            />
-          )}
-          {!inStatementBody && inEditorPanel && (
+          {!inStatementBody && (
             <ValueSourceOutPort
               block={block}
               onPointerDown={ctx.onReferenceDragStart(block.id)}
@@ -96,7 +89,10 @@ export function FunctionCallBlock({
                   filled={!!arg.value}
                 >
                   {arg.value && renderChild
-                    ? renderChild(arg.value, { slotFit: true, nestedView: true })
+                    ? renderChild(arg.value, {
+                        slotFit: true,
+                        nestedView: !inEditorPanel,
+                      })
                     : null}
                 </BlockSlot>
               </div>

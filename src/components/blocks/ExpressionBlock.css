@@ -20,6 +20,23 @@
   width: auto;
 }
 
+.expression-block__name {
+  min-width: 60px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--text-h);
+  background: var(--code-bg);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+}
+
+.expression-block__name:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
 .expression-block__eq {
   font-family: var(--mono);
   font-weight: 600;

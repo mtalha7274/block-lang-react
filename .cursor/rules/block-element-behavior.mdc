@@ -47,25 +47,35 @@ alwaysApply: true
 
 Containers grow vertically when a valid child is placed.
 
+## Typed value matching
+
+Value-producing blocks: **primitive**, **variable**, **expression**, **functionCall**, **valueRef**.
+
+- Read type via `getBlockValueType` / `getValueTypeFromSource` in [`typeChecker.ts`](src/lib/validation/typeChecker.ts) and [`scope.ts`](src/lib/program/scope.ts).
+- Typed slots accept a block when `canValueSlotAcceptBlock(expected, block)` is true: `getBlockValueType(block) === expected`.
+- **Primitives** always fit typed slots; coerce to slot type on attach (`defaultValueForType`).
+- **Block drag** onto a value slot → nest/move the block (detach from old location via `attachBlockIdToSlot`).
+- **Reference grip** / scope picker → `valueRef` only; source stays on its line (`assignReferenceToSlot`).
+
 ## Slot acceptance → [`typeChecker.ts`](src/lib/validation/typeChecker.ts)
 
 | Slot | Accepts |
 |------|---------|
 | `statement-body` | variable, expression, print, functionCall, if, for, while — **not** primitive |
-| `variable-value` | primitive, expression, functionCall, valueRef — match `valueType` |
-| `print-value` | primitive, variable, expression, functionCall, valueRef |
-| `if-condition` | boolean-valued blocks/refs |
-| `expression-operand` | same as print-value — match operand type (`getExpressionOperandType`; comparisons use **number** operands) |
-| `for-init` / `for-increment` | typed value — **number** |
+| `variable-value` | primitive, variable, expression, functionCall, valueRef — type must match `valueType` |
+| `print-value` | primitive, variable, expression, functionCall, valueRef (any value type) |
+| `if-condition` | boolean-valued blocks/refs (`canBooleanSlotAcceptBlock`) |
+| `expression-operand` | value nestable kinds — match operand type (`getExpressionOperandType`; comparisons use **number** operands) |
+| `for-init` / `for-increment` | number-valued blocks/refs |
 | `for-condition` / `while-condition` | boolean-valued blocks/refs |
-| `call-arg` | primitive or variable matching arg type |
+| `call-arg` | primitive, variable, expression, functionCall, valueRef — type must match arg |
 | `type-variable` | variable only |
 | `function-signature` | type block only |
 
 ## In-scope refs
 
 - Link keeps source on its line; consumer stores `valueRef`. **Use existing…** on empty slots (`scopeConsumerId`).
-- Drag **ReferencePill** / link grip → value slot. Usage edges in body ([`ConnectionLayer.tsx`](src/components/canvas/ConnectionLayer.tsx)). Source removal → error on ref.
+- Drag **ReferencePill** / link grip → value slot (not block drag). Usage edges in body ([`ConnectionLayer.tsx`](src/components/canvas/ConnectionLayer.tsx)). Source removal → error on ref.
 
 ## File map
 
@@ -84,4 +94,4 @@ Containers grow vertically when a valid child is placed.
 
 ## New slot checklist
 
-`program.ts` type → `BlockSlot` `slotTarget` → `slotTargetFromElement` + `slotTargetKey` → `typeChecker` → `blockTree` (update/findParent/detach) → `useBlockDrag` → `useEditorState` (attach + ref) → `valueRef.getUsageInPortId` → update slot table above.
+`program.ts` type → `BlockSlot` `slotTarget` → `slotTargetFromElement` + `slotTargetKey` → `typeChecker` (`canValueSlotAcceptBlock`, `canPaletteKindFitValueSlot`) → `blockTree` (update/findParent/detach) → `useBlockDrag` → `useEditorState` (attach + ref) → `valueRef.getUsageInPortId` → update slot table above.

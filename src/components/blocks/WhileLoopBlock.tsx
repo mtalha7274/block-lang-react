@@ -9,6 +9,7 @@ interface WhileLoopBlockProps {
   renderChild?: (node: BlockNode, opts?: RenderChildOptions) => React.ReactNode
   activeBlockId?: string
   compact?: boolean
+  inEditorPanel?: boolean
 }
 
 export function WhileLoopBlock({
@@ -16,6 +17,7 @@ export function WhileLoopBlock({
   renderChild,
   activeBlockId,
   compact = false,
+  inEditorPanel = false,
 }: WhileLoopBlockProps) {
   const { condition, body } = block.data
   const state =
@@ -41,7 +43,7 @@ export function WhileLoopBlock({
         hint="Drop a boolean condition here"
       >
         {condition && renderChild
-          ? renderChild(condition, { slotFit: true, nestedView: false })
+          ? renderChild(condition, { slotFit: true, nestedView: !inEditorPanel })
           : null}
       </BlockSlot>
       <div className="while-loop__body">

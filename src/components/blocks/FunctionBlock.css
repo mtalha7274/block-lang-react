@@ -1,3 +1,7 @@
+.function-block-wrap {
+  position: relative;
+}
+
 .function-block__section-label {
   display: block;
   font-size: 10px;

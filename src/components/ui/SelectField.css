@@ -6,7 +6,7 @@
   background: var(--code-bg);
   border: 1px solid var(--border);
   border-radius: 4px;
-  pointer-events: none;
+  cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236b6375' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -16,4 +16,6 @@
 
 .select-field:disabled {
   opacity: 1;
+  pointer-events: none;
+  cursor: default;
 }

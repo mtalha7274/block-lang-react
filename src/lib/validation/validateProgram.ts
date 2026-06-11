@@ -1,5 +1,8 @@
 import type { BlockId, BlockNode, ProgramDocument } from '../../types'
-import { canExpressionOperandAcceptBlock } from './typeChecker'
+import {
+  canExpressionOperandAcceptBlock,
+  getBlockValueType,
+} from './typeChecker'
 
 export interface ProgramValidationError {
   blockId: BlockId
@@ -37,7 +40,13 @@ function visitBlock(block: BlockNode, visit: (block: BlockNode) => void): void {
       block.data.falseBranch?.forEach((child) => visitBlock(child, visit))
       break
     case 'for':
+      if (block.data.init) visitBlock(block.data.init, visit)
+      if (block.data.condition) visitBlock(block.data.condition, visit)
+      if (block.data.increment) visitBlock(block.data.increment, visit)
+      block.data.body.forEach((child) => visitBlock(child, visit))
+      break
     case 'while':
+      if (block.data.condition) visitBlock(block.data.condition, visit)
       block.data.body.forEach((child) => visitBlock(child, visit))
       break
     case 'function':
@@ -75,6 +84,36 @@ function validateBlock(block: BlockNode, errors: ProgramValidationError[]): void
       errors.push({
         blockId: block.id,
         message: 'Expression is incomplete',
+      })
+    }
+  }
+
+  if (block.kind === 'if' && block.data.condition) {
+    const conditionType = getBlockValueType(block.data.condition)
+    if (conditionType !== 'boolean') {
+      errors.push({
+        blockId: block.id,
+        message: 'Condition must evaluate to a boolean',
+      })
+    }
+  }
+
+  if (block.kind === 'for' && block.data.condition) {
+    const conditionType = getBlockValueType(block.data.condition)
+    if (conditionType !== 'boolean') {
+      errors.push({
+        blockId: block.id,
+        message: 'Condition must evaluate to a boolean',
+      })
+    }
+  }
+
+  if (block.kind === 'while' && block.data.condition) {
+    const conditionType = getBlockValueType(block.data.condition)
+    if (conditionType !== 'boolean') {
+      errors.push({
+        blockId: block.id,
+        message: 'Condition must evaluate to a boolean',
       })
     }
   }

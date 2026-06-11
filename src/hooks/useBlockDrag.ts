@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, type RefObject } from 'react'
 import type { BlockKind, BlockNode, SlotTarget, ValueType } from '../types'
 import {
   canStatementBodyAcceptBlock,
-  canSlotAcceptBlock,
+  canValueSlotAcceptBlock,
   canTypeVariableAcceptBlock,
   canFunctionSignatureAcceptBlock,
   canCallArgAcceptBlock,
@@ -10,12 +10,11 @@ import {
   canIfConditionAcceptBlock,
   canExpressionOperandAcceptBlock,
   canTypedValueSlotAcceptBlock,
+  canPaletteKindFitValueSlot,
   getExpressionOperandType,
-  paletteKindFitsTypedValueSlot,
   paletteKindFitsBooleanSlot,
   slotRejectMessage,
 } from '../lib/validation/typeChecker'
-import { createBlockFromKind } from '../constants/blockDefaults'
 import { createValueRefFromSource } from '../lib/program/valueRef'
 import { getInScopeValuesForConsumer, isValueSourceBlock } from '../lib/program/scope'
 
@@ -72,14 +71,14 @@ function evaluateReferenceSlotValidity(
   if (target.kind === 'variable-value') {
     const parent = findBlock(target.parentBlockId)
     if (parent?.kind !== 'variable') return false
-    return canSlotAcceptBlock(parent.data.valueType, valueRef)
+    return canValueSlotAcceptBlock(parent.data.valueType, valueRef)
   }
   if (target.kind === 'call-arg') {
     const parent = findBlock(target.parentBlockId)
     if (parent?.kind !== 'functionCall') return false
     const arg = parent.data.arguments.find((a) => a.portId === target.argPortId)
     if (!arg) return false
-    return canSlotAcceptBlock(arg.type, valueRef)
+    return canCallArgAcceptBlock(arg.type, valueRef)
   }
   if (target.kind === 'expression-operand') {
     const parent = findBlock(target.parentBlockId)
@@ -104,11 +103,8 @@ function evaluateSlotValidity(
   if (target.kind === 'variable-value') {
     const parent = findBlock(target.parentBlockId)
     if (parent?.kind !== 'variable') return false
-    if (block) {
-      if (block.kind === 'primitive') return true
-      return canSlotAcceptBlock(parent.data.valueType, block)
-    }
-    if (kind) return paletteKindFitsVariableSlot(kind, parent.data.valueType)
+    if (block) return canValueSlotAcceptBlock(parent.data.valueType, block)
+    if (kind) return canPaletteKindFitValueSlot(kind, parent.data.valueType)
     return false
   }
 
@@ -146,7 +142,8 @@ function evaluateSlotValidity(
     const arg = parent.data.arguments.find((a) => a.portId === target.argPortId)
     if (!arg) return false
     if (block) return canCallArgAcceptBlock(arg.type, block)
-    return kind === 'primitive' || kind === 'variable'
+    if (kind) return canPaletteKindFitValueSlot(kind, arg.type)
+    return false
   }
 
   if (target.kind === 'print-value') {
@@ -173,7 +170,7 @@ function evaluateSlotValidity(
     if (parent?.kind !== 'expression') return false
     if (block) return canExpressionOperandAcceptBlock(parent, block)
     if (kind) {
-      return paletteKindFitsTypedValueSlot(
+      return canPaletteKindFitValueSlot(
         kind,
         getExpressionOperandType(parent.data.operator),
       )
@@ -185,7 +182,7 @@ function evaluateSlotValidity(
     const parent = findBlock(target.parentBlockId)
     if (parent?.kind !== 'for') return false
     if (block) return canTypedValueSlotAcceptBlock('number', block)
-    if (kind) return paletteKindFitsTypedValueSlot(kind, 'number')
+    if (kind) return canPaletteKindFitValueSlot(kind, 'number')
     return false
   }
 
@@ -229,7 +226,14 @@ function dropRejectMessage(
   }
   if (target.kind === 'type-variable') return 'Drop a Variable here'
   if (target.kind === 'function-signature') return 'Drop a Type block here'
-  if (target.kind === 'call-arg') return 'Drop a Constant or Variable here'
+  if (target.kind === 'call-arg') {
+    const parent = findBlock(target.parentBlockId)
+    if (parent?.kind === 'functionCall' && block && block.kind !== 'primitive') {
+      const arg = parent.data.arguments.find((a) => a.portId === target.argPortId)
+      if (arg) return slotRejectMessage(arg.type, block)
+    }
+    return 'Drop a matching value for this argument'
+  }
   if (target.kind === 'print-value') return 'Drop a value to print here'
   if (target.kind === 'if-condition') return 'Drop a boolean condition here'
   if (target.kind === 'expression-operand') {
@@ -249,18 +253,6 @@ function dropRejectMessage(
   if (target.kind === 'while-condition') return 'Drop a boolean condition here'
   if (kind) return 'This block cannot go here'
   return 'Invalid drop target'
-}
-
-function paletteKindFitsVariableSlot(kind: BlockKind, expected: ValueType): boolean {
-  if (kind === 'primitive' || kind === 'expression') return true
-  if (kind === 'functionCall') {
-    const probe = createBlockFromKind('functionCall') as Extract<
-      BlockNode,
-      { kind: 'functionCall' }
-    >
-    return probe.data.returnType === expected
-  }
-  return false
 }
 
 function clientToSurfacePoint(
@@ -654,6 +646,98 @@ export function useBlockDrag({
     [onAttachBlockId, findBlock, onMoveBlock, flashSlotReject, clearSlotHover],
   )
 
+  const handleNestedChipPointerDown = useCallback(
+    (
+      blockId: string,
+      e: React.PointerEvent,
+      anchorEl: HTMLElement,
+      openEditor: (anchor: HTMLElement) => void,
+    ) => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      const startX = e.clientX
+      const startY = e.clientY
+      let didDrag = false
+
+      const chipWidth = anchorEl.offsetWidth || BLOCK_KIND_PREVIEW.variable.width
+      const chipHeight = anchorEl.offsetHeight || BLOCK_KIND_PREVIEW.variable.height
+
+      setDraggingBlockId(blockId)
+      blockDragRef.current = {
+        blockId,
+        offsetX: 0,
+        offsetY: 0,
+        originX: 0,
+        originY: 0,
+        blockWidth: chipWidth,
+        blockHeight: chipHeight,
+      }
+
+      const onMove = (ev: PointerEvent) => {
+        const dx = ev.clientX - startX
+        const dy = ev.clientY - startY
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+          didDrag = true
+        }
+
+        const dropTarget = slotTargetFromPoint(ev.clientX, ev.clientY, blockId)
+        if (dropTarget) {
+          const block = findBlock(blockId) ?? null
+          applySlotEvaluation(dropTarget, block, null, {
+            width: chipWidth,
+            height: chipHeight,
+          })
+        } else {
+          clearSlotHover()
+        }
+      }
+
+      const onUp = (ev: PointerEvent) => {
+        window.removeEventListener('pointermove', onMove)
+
+        const dropTarget = slotTargetFromPoint(ev.clientX, ev.clientY, blockId)
+        const block = findBlock(blockId)
+
+        if (!didDrag) {
+          openEditor(anchorEl)
+        } else if (dropTarget && block) {
+          const valid = evaluateSlotValidity(dropTarget, block, null, findBlock)
+          if (valid) {
+            const ok = onAttachBlockId(blockId, dropTarget)
+            if (!ok) {
+              flashSlotReject(
+                dropTarget,
+                dropRejectMessage(dropTarget, null, block, undefined, findBlock),
+                blockId,
+              )
+            }
+          } else {
+            flashSlotReject(
+              dropTarget,
+              dropRejectMessage(dropTarget, null, block, undefined, findBlock),
+              blockId,
+            )
+          }
+        }
+
+        blockDragRef.current = null
+        setDraggingBlockId(null)
+        clearSlotHover()
+      }
+
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp, { once: true })
+    },
+    [
+      findBlock,
+      applySlotEvaluation,
+      clearSlotHover,
+      onAttachBlockId,
+      flashSlotReject,
+    ],
+  )
+
   const onReferenceDragStart = useCallback(
     (sourceBlockId: string) => (e: React.PointerEvent) => {
       e.preventDefault()
@@ -917,6 +1001,7 @@ export function useBlockDrag({
     handleBlockPointerDown,
     handleBlockPointerMove,
     handleBlockPointerUp,
+    handleNestedChipPointerDown,
     onSlotPointerEnter,
     onSlotPointerLeave,
     onSlotPointerUp,

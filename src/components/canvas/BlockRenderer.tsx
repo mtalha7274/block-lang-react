@@ -66,7 +66,11 @@ export function BlockRenderer({
     const childInBody = opts?.inStatementBody ?? inStatementBody
     const childNestedView =
       opts?.nestedView ??
-      (childSlotFit && !childInBody ? true : nestedView ?? childInBody ?? childSlotFit)
+      (inEditorPanel
+        ? false
+        : childSlotFit && !childInBody
+          ? true
+          : nestedView ?? childInBody ?? childSlotFit)
 
     return (
       <BlockRenderer
@@ -97,8 +101,19 @@ export function BlockRenderer({
       <MinimizedBlockChip
         block={block}
         isSelected={isBlockEditing(ctx, block.id)}
-        onClick={(anchorEl) => ctx.openBlockEditor(block.id, anchorEl)}
+        onOpenEditor={(anchorEl) => ctx.openBlockEditor(block.id, anchorEl)}
         onRemove={() => ctx.detachNestedBlock(block.id)}
+        onChipPointerDown={
+          ctx.onNestedChipPointerDown
+            ? (e, anchor) =>
+                ctx.onNestedChipPointerDown!(
+                  block.id,
+                  e,
+                  anchor,
+                  (a) => ctx.openBlockEditor(block.id, a),
+                )
+            : undefined
+        }
         onReferenceDragStart={
           isValueSourceBlock(block)
             ? ctx.onReferenceDragStart(block.id)
@@ -106,6 +121,9 @@ export function BlockRenderer({
         }
         usageOutPort={isValueSourceBlock(block)}
         usageInPortId={inputPort?.show ? inputPort.portId : undefined}
+        callOutPort={connections.some(
+          (c) => c.purpose === 'wire' && c.from.blockId === block.id,
+        )}
       />
     )
   }

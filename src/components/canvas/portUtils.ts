@@ -35,8 +35,28 @@ export function getPortCenter(
   blockId: string,
   portId: string,
 ): Point | null {
-  const blockEl = container.querySelector(`[data-block-id="${blockId}"]`)
-  if (!blockEl) return null
+  const matches = container.querySelectorAll(`[data-block-id="${blockId}"]`)
+  if (matches.length === 0) return null
+
+  let blockEl: Element = matches[0]
+  for (const el of matches) {
+    if (el.querySelector(`[data-port-id="${portId}"]`)) {
+      blockEl = el
+      break
+    }
+  }
+
+  if (
+    !blockEl.querySelector(`[data-port-id="${portId}"]`) &&
+    matches.length > 1
+  ) {
+    const inner = Array.from(matches).find(
+      (el) =>
+        el.classList.contains('block-renderer') ||
+        el.classList.contains('minimized-chip'),
+    )
+    if (inner) blockEl = inner
+  }
 
   const portEl = blockEl.querySelector(`[data-port-id="${portId}"]`)
   const containerRect = container.getBoundingClientRect()

@@ -38,6 +38,7 @@ export function StatementBody({
       statementIds.has(c.from.blockId) &&
       statementIds.has(c.to.blockId),
   )
+  const bodyEdges = usageEdges
 
   return (
     <div className="statement-body">
@@ -70,8 +71,8 @@ export function StatementBody({
         <span className="statement-body__line" aria-hidden />
         <BlockSlot slotTarget={slotTarget} hint={slotHint} />
       </div>
-      {usageEdges.length > 0 && (
-        <ConnectionLayer edges={usageEdges} blockIds={statements.map((s) => s.id)} />
+      {bodyEdges.length > 0 && (
+        <ConnectionLayer edges={bodyEdges} blockIds={statements.map((s) => s.id)} />
       )}
     </div>
   )

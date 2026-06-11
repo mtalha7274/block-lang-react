@@ -3,7 +3,6 @@ import { typeColorMap } from '../../constants'
 import { useDragContext } from '../canvas/DragContext'
 import { PuzzleStrip } from './PuzzleStrip'
 import { TypeSelect, TypeBadge, BlockSlot } from '../ui'
-import { ReferencePill } from './ReferencePill'
 import { ValueSourceOutPort } from './ValueSourceOutPort'
 import './VariableBlock.css'
 
@@ -71,13 +70,7 @@ export function VariableBlock({
             value={name}
             onChange={(e) => ctx.updateVariableName(block.id, e.target.value)}
           />
-          {!inStatementBody && !inEditorPanel && (
-            <ReferencePill
-              block={block}
-              onPointerDown={ctx.onReferenceDragStart(block.id)}
-            />
-          )}
-          {!inStatementBody && inEditorPanel && (
+          {!inStatementBody && (
             <ValueSourceOutPort
               block={block}
               onPointerDown={ctx.onReferenceDragStart(block.id)}
@@ -92,7 +85,9 @@ export function VariableBlock({
             hint={`Drop a ${valueType} value here`}
             filled={!!value}
           >
-            {value && renderChild ? renderChild(value, { slotFit: true, nestedView: true }) : null}
+            {value && renderChild
+              ? renderChild(value, { slotFit: true, nestedView: !inEditorPanel })
+              : null}
           </BlockSlot>
         </div>
       </div>

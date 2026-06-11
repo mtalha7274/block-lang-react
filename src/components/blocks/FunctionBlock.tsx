@@ -3,6 +3,7 @@ import { useDragContext } from '../canvas/DragContext'
 import { deriveTypeParams } from '../../lib/program/typeParams'
 import { BlockShell } from './BlockShell'
 import { StatementBody } from './StatementBody'
+import { CALL_IN_PORT } from '../../lib/program/callWire'
 import { TypeSelect, TypeBadge, BlockSlot } from '../ui'
 import './FunctionBlock.css'
 
@@ -27,6 +28,9 @@ export function FunctionBlock({
     activeBlockId === block.id ? 'active' : block.visual?.state ?? 'default'
 
   const derivedParams = signature ? deriveTypeParams(signature) : []
+  const hasCallInWire = connections.some(
+    (c) => c.purpose === 'wire' && c.to.blockId === block.id,
+  )
   const slotTarget = {
     kind: 'function-signature' as const,
     parentBlockId: block.id,
@@ -45,14 +49,22 @@ export function FunctionBlock({
   }
 
   return (
-    <BlockShell
-      blockId={block.id}
-      layoutOverride={block.visual?.layout}
-      category="function"
-      state={state}
-      compact={compact}
-      errorMessage={block.visual?.errorMessage}
-      footer={
+    <div className="function-block-wrap">
+      {hasCallInWire && (
+        <span
+          className="usage-anchor usage-anchor--in"
+          data-port-id={CALL_IN_PORT}
+          aria-hidden
+        />
+      )}
+      <BlockShell
+        blockId={block.id}
+        layoutOverride={block.visual?.layout}
+        category="function"
+        state={state}
+        compact={compact}
+        errorMessage={block.visual?.errorMessage}
+        footer={
         <div className="function-block__returns">
           <span className="function-block__section-label">RETURNS</span>
           <TypeSelect
@@ -113,5 +125,6 @@ export function FunctionBlock({
         ) : null}
       </div>
     </BlockShell>
+    </div>
   )
 }
