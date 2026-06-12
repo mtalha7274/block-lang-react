@@ -25,9 +25,8 @@ export function ExpressionBlock({
   activeBlockId,
   compact = false,
   inStatementBody = false,
-  inEditorPanel = false,
 }: ExpressionBlockProps) {
-  const slotChildOpts = { slotFit: true, nestedView: !inEditorPanel } as const
+  const slotChildOpts = { slotFit: true, nestedView: true } as const
   const ctx = useDragContext()
   const { resultName, resultType, operator, left, right } = block.data
   const leftInvalid = left != null && !canExpressionOperandAcceptBlock(block, left)

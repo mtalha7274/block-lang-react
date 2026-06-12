@@ -17,6 +17,9 @@ function collectNodeIds(node: BlockNode): string[] {
     case 'print':
       if (node.data.value) ids.push(...collectNodeIds(node.data.value))
       break
+    case 'return':
+      if (node.data.value) ids.push(...collectNodeIds(node.data.value))
+      break
     case 'if':
       if (node.data.condition) ids.push(...collectNodeIds(node.data.condition))
       node.data.trueBranch.forEach((s) => ids.push(...collectNodeIds(s)))

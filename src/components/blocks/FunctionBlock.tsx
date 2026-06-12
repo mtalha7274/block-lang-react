@@ -65,66 +65,70 @@ export function FunctionBlock({
         compact={compact}
         errorMessage={block.visual?.errorMessage}
         footer={
-        <div className="function-block__returns">
-          <span className="function-block__section-label">RETURNS</span>
-          <TypeSelect
-            value={returnType}
-            includeVoid
-            onChange={(type) => ctx.updateFunctionReturnType(block.id, type)}
-          />
-        </div>
-      }
-    >
-      <div className="function-block__header">
-        <span className="function-block__section-label">NAME</span>
-        <input
-          type="text"
-          className="function-block__name"
-          value={name}
-          onChange={(e) => ctx.updateFunctionName(block.id, e.target.value)}
-          placeholder="function name"
-        />
-      </div>
-      <div className="function-block__inputs">
-        <span className="function-block__section-label">INPUT</span>
-        <BlockSlot
-          slotTarget={slotTarget}
-          hint="Drop a Type block here (optional)"
-          filled={!!signature}
-        >
-          {signature && renderChild
-            ? renderChild(signature, { compact: true })
-            : null}
-        </BlockSlot>
-        {derivedParams.length > 0 && (
-          <div className="function-block__derived-params">
-            <span className="function-block__section-label">PARAMS</span>
-            <div className="function-block__params">
-              {derivedParams.map((param) => (
-                <div key={param.id} className="function-block__param">
-                  <TypeBadge type={param.type} />
-                  <span className="function-block__param-name">{param.name}</span>
-                </div>
-              ))}
+          <section className="function-block__panel function-block__panel--returns">
+            <div className="function-block__returns-head">
+              <span className="function-block__panel-head">RETURNS</span>
+              <TypeSelect
+                className="function-block__returns-type"
+                value={returnType}
+                includeVoid
+                onChange={(type) => ctx.updateFunctionReturnType(block.id, type)}
+              />
             </div>
+          </section>
+        }
+      >
+        <div className="function-block">
+          <div className="function-block__hero">
+            <input
+              type="text"
+              className="function-block__name"
+              value={name}
+              onChange={(e) => ctx.updateFunctionName(block.id, e.target.value)}
+              placeholder="function name"
+              aria-label="Function name"
+            />
           </div>
-        )}
-      </div>
-      <div className="function-block__body">
-        <span className="function-block__section-label">BODY</span>
-        {renderChild ? (
-          <StatementBody
-            statements={body}
-            region="function"
-            parentBlockId={block.id}
-            containerBlock={block}
-            renderChild={renderChild}
-            activeBlockId={activeBlockId}
-            connections={connections}
-          />
-        ) : null}
-      </div>
-    </BlockShell>
+
+          <section className="function-block__panel function-block__panel--input function-block__inputs">
+            <span className="function-block__panel-head">INPUT</span>
+            <BlockSlot
+              slotTarget={slotTarget}
+              hint="Drop a Type block (optional)"
+              filled={!!signature}
+            >
+              {signature && renderChild
+                ? renderChild(signature, { compact: true })
+                : null}
+            </BlockSlot>
+            {derivedParams.length > 0 && (
+              <div className="function-block__params">
+                {derivedParams.map((param) => (
+                  <div key={param.id} className="function-block__param">
+                    <TypeBadge type={param.type} />
+                    <span className="function-block__param-name">{param.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="function-block__panel function-block__panel--body">
+            <span className="function-block__panel-head">BODY</span>
+            {renderChild ? (
+              <StatementBody
+                statements={body}
+                region="function"
+                parentBlockId={block.id}
+                containerBlock={block}
+                renderChild={renderChild}
+                activeBlockId={activeBlockId}
+                connections={connections}
+              />
+            ) : null}
+          </section>
+        </div>
+      </BlockShell>
     </div>
   )
 }

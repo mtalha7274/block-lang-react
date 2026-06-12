@@ -98,6 +98,14 @@ export const blockRegistry: Record<BlockKind, BlockRegistryEntry> = {
     stripeColor: 'var(--type-string)',
     description: 'Print a value to the output panel',
   },
+  return: {
+    kind: 'return',
+    label: 'Return',
+    category: 'function',
+    stage: 'functions',
+    stripeColor: 'var(--type-void)',
+    description: 'Return a value from a function',
+  },
   valueRef: {
     kind: 'valueRef',
     label: 'Reference',

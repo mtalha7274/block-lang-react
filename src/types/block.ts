@@ -14,6 +14,7 @@ export type BlockKind =
   | 'function'
   | 'functionCall'
   | 'print'
+  | 'return'
   | 'valueRef'
 
 export type BlockCategory = 'primitive' | 'variable' | 'control' | 'function'
@@ -132,6 +133,10 @@ export interface PrintBlockData {
   value?: BlockNode
 }
 
+export interface ReturnBlockData {
+  value?: BlockNode
+}
+
 export interface ValueRefBlockData {
   sourceBlockId: BlockId
   label: string
@@ -142,21 +147,40 @@ export interface MainFunctionBlockData {
   body: BlockNode[]
 }
 
-export type BlockData =
-  | { kind: 'main'; data: MainFunctionBlockData }
-  | { kind: 'primitive'; data: PrimitiveBlockData }
-  | { kind: 'variable'; data: VariableBlockData }
-  | { kind: 'type'; data: TypeBlockData }
-  | { kind: 'expression'; data: ExpressionBlockData }
-  | { kind: 'if'; data: IfBlockData }
-  | { kind: 'for'; data: ForLoopBlockData }
-  | { kind: 'while'; data: WhileLoopBlockData }
-  | { kind: 'function'; data: FunctionBlockData }
-  | { kind: 'functionCall'; data: FunctionCallBlockData }
-  | { kind: 'print'; data: PrintBlockData }
-  | { kind: 'valueRef'; data: ValueRefBlockData }
-
-export type BlockNode = BlockData & {
+export interface BaseBlockNode<TKind extends BlockKind, TData> {
   id: BlockId
+  kind: TKind
+  data: TData
   visual?: BlockVisualFlags
 }
+
+export type MainBlockNode = BaseBlockNode<'main', MainFunctionBlockData>
+export type PrimitiveBlockNode = BaseBlockNode<'primitive', PrimitiveBlockData>
+export type VariableBlockNode = BaseBlockNode<'variable', VariableBlockData>
+export type TypeBlockNode = BaseBlockNode<'type', TypeBlockData>
+export type ExpressionBlockNode = BaseBlockNode<'expression', ExpressionBlockData>
+export type IfBlockNode = BaseBlockNode<'if', IfBlockData>
+export type ForLoopBlockNode = BaseBlockNode<'for', ForLoopBlockData>
+export type WhileLoopBlockNode = BaseBlockNode<'while', WhileLoopBlockData>
+export type FunctionBlockNode = BaseBlockNode<'function', FunctionBlockData>
+export type FunctionCallBlockNode = BaseBlockNode<'functionCall', FunctionCallBlockData>
+export type PrintBlockNode = BaseBlockNode<'print', PrintBlockData>
+export type ReturnBlockNode = BaseBlockNode<'return', ReturnBlockData>
+export type ValueRefBlockNode = BaseBlockNode<'valueRef', ValueRefBlockData>
+
+export type BlockNode =
+  | MainBlockNode
+  | PrimitiveBlockNode
+  | VariableBlockNode
+  | TypeBlockNode
+  | ExpressionBlockNode
+  | IfBlockNode
+  | ForLoopBlockNode
+  | WhileLoopBlockNode
+  | FunctionBlockNode
+  | FunctionCallBlockNode
+  | PrintBlockNode
+  | ReturnBlockNode
+  | ValueRefBlockNode
+
+export type BlockData = Pick<BlockNode, 'kind' | 'data'>

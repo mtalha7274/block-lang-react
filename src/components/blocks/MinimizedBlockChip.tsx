@@ -1,5 +1,5 @@
 import type { BlockNode, ValueType } from '../../types'
-import { typeColorMap } from '../../constants'
+import { getMiniBlockView } from '../../lib/program/blockContract'
 import { getLabelFromSource, isValueSourceBlock } from '../../lib/program/scope'
 import './MinimizedBlockChip.css'
 
@@ -18,89 +18,16 @@ interface MinimizedBlockChipProps {
   callOutPort?: boolean
 }
 
-function formatPrimitiveValue(value: string | number | boolean, type: ValueType): string {
-  if (type === 'string') return `"${value}"`
-  if (type === 'boolean') return value ? 'true' : 'false'
-  return String(value)
-}
-
 function chipLabel(block: BlockNode): string {
-  switch (block.kind) {
-    case 'primitive':
-      return formatPrimitiveValue(block.data.value, block.data.valueType)
-    case 'variable': {
-      const { name, value } = block.data
-      if (!value) return name
-      if (value.kind === 'primitive') {
-        return `${name} = ${formatPrimitiveValue(value.data.value, value.data.valueType)}`
-      }
-      if (value.kind === 'valueRef') return `${name} = ${value.data.label}`
-      return `${name} = …`
-    }
-    case 'print':
-      if (block.data.value?.kind === 'valueRef') {
-        return `PRINT ${block.data.value.data.label}`
-      }
-      return block.data.value ? 'PRINT …' : 'PRINT'
-    case 'expression':
-      return `${block.data.resultName} = …`
-    case 'functionCall':
-      return `${block.data.functionName}(…)`
-    case 'type':
-      return 'Type'
-    case 'if':
-      if (block.data.condition?.kind === 'valueRef') {
-        return `If ${block.data.condition.data.label}`
-      }
-      return 'If / Else'
-    case 'for':
-      return 'For'
-    case 'while':
-      return 'While'
-    case 'function':
-      return block.data.name
-    default:
-      return block.kind
-  }
+  return getMiniBlockView(block).label
 }
 
 function chipColor(block: BlockNode): string {
-  switch (block.kind) {
-    case 'primitive':
-      return typeColorMap[block.data.valueType]
-    case 'variable':
-      return typeColorMap[block.data.valueType]
-    case 'print':
-      return typeColorMap.string
-    case 'expression':
-      return typeColorMap[block.data.resultType]
-    case 'functionCall':
-    case 'function':
-      return typeColorMap.void
-    case 'type':
-      return typeColorMap.boolean
-    case 'if':
-    case 'for':
-    case 'while':
-      return typeColorMap.boolean
-    default:
-      return typeColorMap.void
-  }
+  return getMiniBlockView(block).color
 }
 
 function chipTypeLabel(block: BlockNode): ValueType | null {
-  switch (block.kind) {
-    case 'primitive':
-      return block.data.valueType
-    case 'variable':
-      return block.data.valueType
-    case 'expression':
-      return block.data.resultType
-    case 'functionCall':
-      return block.data.returnType
-    default:
-      return null
-  }
+  return getMiniBlockView(block).valueType
 }
 
 export function MinimizedBlockChip({

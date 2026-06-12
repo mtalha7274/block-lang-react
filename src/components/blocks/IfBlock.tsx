@@ -18,7 +18,6 @@ export function IfBlock({
   renderChild,
   activeBlockId,
   compact = false,
-  inEditorPanel = false,
   connections = [],
 }: IfBlockProps) {
   const { condition, trueBranch, falseBranch } = block.data
@@ -48,7 +47,7 @@ export function IfBlock({
         filled={!!condition}
       >
         {condition && renderChild
-          ? renderChild(condition, { slotFit: true, nestedView: !inEditorPanel })
+          ? renderChild(condition, { slotFit: true, nestedView: true })
           : null}
       </BlockSlot>
       <div className="if-block__branches">

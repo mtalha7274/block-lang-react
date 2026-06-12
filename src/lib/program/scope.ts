@@ -1,4 +1,9 @@
 import type { BlockNode, ValueType } from '../../types'
+import {
+  canCreateValueReference,
+  getBlockValueType,
+  getValueLabel,
+} from './blockContract'
 import { findBlockInTree, findBlockParent } from './blockTree'
 
 export interface InScopeValue {
@@ -9,33 +14,41 @@ export interface InScopeValue {
 }
 
 export function getValueTypeFromSource(block: BlockNode): ValueType | null {
-  switch (block.kind) {
-    case 'variable':
-      return block.data.valueType
-    case 'expression':
-      return block.data.resultType
-    case 'functionCall':
-      return block.data.returnType
-    default:
-      return null
-  }
+  return canCreateValueReference(block) ? getBlockValueType(block) : null
 }
 
 export function getLabelFromSource(block: BlockNode): string | null {
-  switch (block.kind) {
-    case 'variable':
-      return block.data.name
-    case 'expression':
-      return block.data.resultName
-    case 'functionCall':
-      return `${block.data.functionName}(…)`
-    default:
-      return null
-  }
+  return getValueLabel(block)
 }
 
 export function isValueSourceBlock(block: BlockNode): boolean {
-  return getValueTypeFromSource(block) !== null
+  return canCreateValueReference(block)
+}
+
+function collectValueSourcesFromStatement(
+  stmt: BlockNode,
+  result: InScopeValue[],
+): void {
+  const valueType = getValueTypeFromSource(stmt)
+  const label = getLabelFromSource(stmt)
+  if (valueType && label) {
+    result.push({
+      blockId: stmt.id,
+      label,
+      valueType,
+      kind: stmt.kind,
+    })
+  }
+
+  if (stmt.kind === 'if') {
+    stmt.data.trueBranch.forEach((child) => collectValueSourcesFromStatement(child, result))
+    stmt.data.falseBranch?.forEach((child) => collectValueSourcesFromStatement(child, result))
+  } else if (stmt.kind === 'for') {
+    if (stmt.data.init) collectValueSourcesFromStatement(stmt.data.init, result)
+    stmt.data.body.forEach((child) => collectValueSourcesFromStatement(child, result))
+  } else if (stmt.kind === 'while') {
+    stmt.data.body.forEach((child) => collectValueSourcesFromStatement(child, result))
+  }
 }
 
 export function collectInScopeValues(
@@ -44,17 +57,7 @@ export function collectInScopeValues(
 ): InScopeValue[] {
   const result: InScopeValue[] = []
   for (let i = 0; i < beforeIndex && i < statements.length; i += 1) {
-    const stmt = statements[i]
-    const valueType = getValueTypeFromSource(stmt)
-    const label = getLabelFromSource(stmt)
-    if (valueType && label) {
-      result.push({
-        blockId: stmt.id,
-        label,
-        valueType,
-        kind: stmt.kind,
-      })
-    }
+    collectValueSourcesFromStatement(statements[i], result)
   }
   return result
 }

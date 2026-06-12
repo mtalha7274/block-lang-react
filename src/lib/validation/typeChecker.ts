@@ -1,6 +1,12 @@
-import type { BlockKind, BlockNode, OperatorSymbol, ValueType } from '../../types'
-import { operators } from '../../constants/operators'
-import { createBlockFromKind } from '../../constants/blockDefaults'
+import type { BlockKind, BlockNode, ValueType } from '../../types'
+import {
+  canUseAsStatement,
+  getBlockValueType,
+  isValueReturningBlock,
+} from '../program/blockContract'
+import { getExpressionOperandType } from './slotRules'
+
+export { getBlockValueType, getExpressionOperandType }
 
 export const VALUE_NESTABLE_KINDS = new Set<BlockKind>([
   'primitive',
@@ -10,23 +16,11 @@ export const VALUE_NESTABLE_KINDS = new Set<BlockKind>([
   'valueRef',
 ])
 
-export function getBlockValueType(block: BlockNode): ValueType | null {
-  if (block.kind === 'primitive') return block.data.valueType
-  if (block.kind === 'functionCall') return block.data.returnType
-  if (block.kind === 'expression') return block.data.resultType
-  if (block.kind === 'variable') return block.data.valueType
-  if (block.kind === 'valueRef') return block.data.valueType
-  return null
-}
-
 export function canValueSlotAcceptBlock(
   expected: ValueType,
   block: BlockNode,
 ): boolean {
-  if (block.kind === 'primitive') return true
-  const blockType = getBlockValueType(block)
-  if (blockType === null) return false
-  return blockType === expected
+  return getBlockValueType(block) === expected
 }
 
 export function canSlotAcceptBlock(
@@ -44,43 +38,15 @@ export function canPaletteKindFitValueSlot(
   kind: BlockKind,
   expected: ValueType,
 ): boolean {
-  if (kind === 'primitive') return true
-  if (kind === 'variable') {
-    const probe = createBlockFromKind('variable') as Extract<
-      BlockNode,
-      { kind: 'variable' }
-    >
-    return probe.data.valueType === expected
-  }
-  if (kind === 'expression') {
-    const probe = createBlockFromKind('expression') as Extract<
-      BlockNode,
-      { kind: 'expression' }
-    >
-    return probe.data.resultType === expected
-  }
-  if (kind === 'functionCall') {
-    const probe = createBlockFromKind('functionCall') as Extract<
-      BlockNode,
-      { kind: 'functionCall' }
-    >
-    return probe.data.returnType === expected
+  if (kind === 'primitive') return expected !== 'void'
+  if (kind === 'variable' || kind === 'expression' || kind === 'functionCall') {
+    return expected === 'number'
   }
   return false
 }
 
-const STATEMENT_BODY_KINDS = new Set([
-  'variable',
-  'expression',
-  'print',
-  'functionCall',
-  'if',
-  'for',
-  'while',
-])
-
 export function canStatementBodyAcceptBlock(block: BlockNode): boolean {
-  return STATEMENT_BODY_KINDS.has(block.kind)
+  return canUseAsStatement(block)
 }
 
 export function canTypeVariableAcceptBlock(block: BlockNode): boolean {
@@ -99,17 +65,11 @@ export function canCallArgAcceptBlock(
 }
 
 export function canPrintValueAcceptBlock(block: BlockNode): boolean {
-  return VALUE_NESTABLE_KINDS.has(block.kind)
+  return isValueReturningBlock(block)
 }
 
 export function canIfConditionAcceptBlock(block: BlockNode): boolean {
   return canBooleanSlotAcceptBlock(block)
-}
-
-export function getExpressionOperandType(operator: OperatorSymbol): ValueType {
-  const entry = operators.find((op) => op.symbol === operator)
-  if (!entry) return 'number'
-  return entry.resultType === 'boolean' ? 'number' : entry.resultType
 }
 
 export function canTypedValueSlotAcceptBlock(
@@ -123,9 +83,7 @@ export function canExpressionOperandAcceptBlock(
   expr: Extract<BlockNode, { kind: 'expression' }>,
   block: BlockNode,
 ): boolean {
-  const expected = getExpressionOperandType(expr.data.operator)
-  if (!VALUE_NESTABLE_KINDS.has(block.kind)) return false
-  return canValueSlotAcceptBlock(expected, block)
+  return canValueSlotAcceptBlock(getExpressionOperandType(expr.data.operator), block)
 }
 
 /** @deprecated Use canPaletteKindFitValueSlot */

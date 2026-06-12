@@ -46,6 +46,7 @@ export type SlotTarget =
   | { kind: 'function-signature'; parentBlockId: BlockId }
   | { kind: 'call-arg'; parentBlockId: BlockId; argPortId: string }
   | { kind: 'print-value'; parentBlockId: BlockId }
+  | { kind: 'return-value'; parentBlockId: BlockId }
   | { kind: 'if-condition'; parentBlockId: BlockId }
   | {
       kind: 'expression-operand'

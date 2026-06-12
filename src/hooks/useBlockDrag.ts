@@ -1,20 +1,10 @@
 import { useCallback, useRef, useState, type RefObject } from 'react'
 import type { BlockKind, BlockNode, SlotTarget, ValueType } from '../types'
 import {
-  canStatementBodyAcceptBlock,
-  canValueSlotAcceptBlock,
-  canTypeVariableAcceptBlock,
-  canFunctionSignatureAcceptBlock,
-  canCallArgAcceptBlock,
-  canPrintValueAcceptBlock,
-  canIfConditionAcceptBlock,
-  canExpressionOperandAcceptBlock,
-  canTypedValueSlotAcceptBlock,
-  canPaletteKindFitValueSlot,
-  getExpressionOperandType,
-  paletteKindFitsBooleanSlot,
+  canAttachBlockToSlot,
+  canAttachPaletteKindToSlot,
   slotRejectMessage,
-} from '../lib/validation/typeChecker'
+} from '../lib/validation/slotRules'
 import { createValueRefFromSource } from '../lib/program/valueRef'
 import { getInScopeValuesForConsumer, isValueSourceBlock } from '../lib/program/scope'
 
@@ -36,6 +26,7 @@ const BLOCK_KIND_PREVIEW: Record<BlockKind, HoverPreviewSize> = {
   function: { width: 300, height: 260 },
   functionCall: { width: 140, height: 32 },
   print: { width: 120, height: 32 },
+  return: { width: 120, height: 32 },
   valueRef: { width: 100, height: 28 },
 }
 
@@ -66,32 +57,7 @@ function evaluateReferenceSlotValidity(
   const inScope = getInScopeValuesForConsumer(getBlocks(), consumerId)
   if (!inScope.some((v) => v.blockId === sourceBlockId)) return false
 
-  if (target.kind === 'print-value') return canPrintValueAcceptBlock(valueRef)
-  if (target.kind === 'if-condition') return canIfConditionAcceptBlock(valueRef)
-  if (target.kind === 'variable-value') {
-    const parent = findBlock(target.parentBlockId)
-    if (parent?.kind !== 'variable') return false
-    return canValueSlotAcceptBlock(parent.data.valueType, valueRef)
-  }
-  if (target.kind === 'call-arg') {
-    const parent = findBlock(target.parentBlockId)
-    if (parent?.kind !== 'functionCall') return false
-    const arg = parent.data.arguments.find((a) => a.portId === target.argPortId)
-    if (!arg) return false
-    return canCallArgAcceptBlock(arg.type, valueRef)
-  }
-  if (target.kind === 'expression-operand') {
-    const parent = findBlock(target.parentBlockId)
-    if (parent?.kind !== 'expression') return false
-    return canExpressionOperandAcceptBlock(parent, valueRef)
-  }
-  if (target.kind === 'for-init' || target.kind === 'for-increment') {
-    return canTypedValueSlotAcceptBlock('number', valueRef)
-  }
-  if (target.kind === 'for-condition' || target.kind === 'while-condition') {
-    return canIfConditionAcceptBlock(valueRef)
-  }
-  return false
+  return canAttachBlockToSlot(target, valueRef, findBlock, {}, getBlocks)
 }
 
 function evaluateSlotValidity(
@@ -99,109 +65,10 @@ function evaluateSlotValidity(
   block: BlockNode | null,
   kind: BlockKind | null,
   findBlock: (id: string) => BlockNode | undefined,
+  getBlocks: () => BlockNode[],
 ): boolean {
-  if (target.kind === 'variable-value') {
-    const parent = findBlock(target.parentBlockId)
-    if (parent?.kind !== 'variable') return false
-    if (block) return canValueSlotAcceptBlock(parent.data.valueType, block)
-    if (kind) return canPaletteKindFitValueSlot(kind, parent.data.valueType)
-    return false
-  }
-
-  if (target.kind === 'statement-body') {
-    if (block) return canStatementBodyAcceptBlock(block)
-    if (kind) {
-      return (
-        kind === 'variable' ||
-        kind === 'expression' ||
-        kind === 'print' ||
-        kind === 'functionCall' ||
-        kind === 'if' ||
-        kind === 'for' ||
-        kind === 'while'
-      )
-    }
-    return false
-  }
-
-  if (target.kind === 'type-variable') {
-    if (block) return canTypeVariableAcceptBlock(block)
-    return kind === 'variable'
-  }
-
-  if (target.kind === 'function-signature') {
-    const parent = findBlock(target.parentBlockId)
-    if (parent?.kind !== 'function' || parent.data.signature) return false
-    if (block) return canFunctionSignatureAcceptBlock(block)
-    return kind === 'type'
-  }
-
-  if (target.kind === 'call-arg') {
-    const parent = findBlock(target.parentBlockId)
-    if (parent?.kind !== 'functionCall') return false
-    const arg = parent.data.arguments.find((a) => a.portId === target.argPortId)
-    if (!arg) return false
-    if (block) return canCallArgAcceptBlock(arg.type, block)
-    if (kind) return canPaletteKindFitValueSlot(kind, arg.type)
-    return false
-  }
-
-  if (target.kind === 'print-value') {
-    if (block) return canPrintValueAcceptBlock(block)
-    if (kind) {
-      return (
-        kind === 'primitive' ||
-        kind === 'variable' ||
-        kind === 'expression' ||
-        kind === 'functionCall'
-      )
-    }
-    return false
-  }
-
-  if (target.kind === 'if-condition') {
-    if (block) return canIfConditionAcceptBlock(block)
-    if (kind) return paletteKindFitsBooleanSlot(kind)
-    return false
-  }
-
-  if (target.kind === 'expression-operand') {
-    const parent = findBlock(target.parentBlockId)
-    if (parent?.kind !== 'expression') return false
-    if (block) return canExpressionOperandAcceptBlock(parent, block)
-    if (kind) {
-      return canPaletteKindFitValueSlot(
-        kind,
-        getExpressionOperandType(parent.data.operator),
-      )
-    }
-    return false
-  }
-
-  if (target.kind === 'for-init' || target.kind === 'for-increment') {
-    const parent = findBlock(target.parentBlockId)
-    if (parent?.kind !== 'for') return false
-    if (block) return canTypedValueSlotAcceptBlock('number', block)
-    if (kind) return canPaletteKindFitValueSlot(kind, 'number')
-    return false
-  }
-
-  if (target.kind === 'for-condition') {
-    const parent = findBlock(target.parentBlockId)
-    if (parent?.kind !== 'for') return false
-    if (block) return canIfConditionAcceptBlock(block)
-    if (kind) return paletteKindFitsBooleanSlot(kind)
-    return false
-  }
-
-  if (target.kind === 'while-condition') {
-    const parent = findBlock(target.parentBlockId)
-    if (parent?.kind !== 'while') return false
-    if (block) return canIfConditionAcceptBlock(block)
-    if (kind) return paletteKindFitsBooleanSlot(kind)
-    return false
-  }
-
+  if (block) return canAttachBlockToSlot(target, block, findBlock, {}, getBlocks)
+  if (kind) return canAttachPaletteKindToSlot(target, kind, findBlock, getBlocks)
   return false
 }
 
@@ -211,48 +78,9 @@ function dropRejectMessage(
   block: BlockNode | null,
   expectedType: ValueType | undefined,
   findBlock: (id: string) => BlockNode | undefined,
+  getBlocks: () => BlockNode[],
 ): string {
-  if (target.kind === 'variable-value') {
-    if (block && block.kind !== 'primitive') {
-      const parent = findBlock(target.parentBlockId)
-      if (parent?.kind === 'variable') {
-        return slotRejectMessage(parent.data.valueType, block)
-      }
-    }
-    return `Drop a ${expectedType ?? 'matching'} value here`
-  }
-  if (target.kind === 'statement-body') {
-    return 'Drop a Variable, Print, Expression, Function Call, or control-flow block here'
-  }
-  if (target.kind === 'type-variable') return 'Drop a Variable here'
-  if (target.kind === 'function-signature') return 'Drop a Type block here'
-  if (target.kind === 'call-arg') {
-    const parent = findBlock(target.parentBlockId)
-    if (parent?.kind === 'functionCall' && block && block.kind !== 'primitive') {
-      const arg = parent.data.arguments.find((a) => a.portId === target.argPortId)
-      if (arg) return slotRejectMessage(arg.type, block)
-    }
-    return 'Drop a matching value for this argument'
-  }
-  if (target.kind === 'print-value') return 'Drop a value to print here'
-  if (target.kind === 'if-condition') return 'Drop a boolean condition here'
-  if (target.kind === 'expression-operand') {
-    const parent = findBlock(target.parentBlockId)
-    if (parent?.kind === 'expression' && block && block.kind !== 'primitive') {
-      return slotRejectMessage(getExpressionOperandType(parent.data.operator), block)
-    }
-    const operandType =
-      parent?.kind === 'expression'
-        ? getExpressionOperandType(parent.data.operator)
-        : expectedType ?? 'matching'
-    return `Drop a ${operandType} value here`
-  }
-  if (target.kind === 'for-init') return 'Drop a number value for loop init'
-  if (target.kind === 'for-condition') return 'Drop a boolean condition here'
-  if (target.kind === 'for-increment') return 'Drop a number value for loop increment'
-  if (target.kind === 'while-condition') return 'Drop a boolean condition here'
-  if (kind) return 'This block cannot go here'
-  return 'Invalid drop target'
+  return slotRejectMessage(target, kind, block, expectedType, findBlock, getBlocks)
 }
 
 function clientToSurfacePoint(
@@ -269,10 +97,12 @@ function clientToSurfacePoint(
 }
 
 interface UseBlockDragOptions {
-  onDropBlock: (kind: BlockKind, x: number, y: number) => void
   onMoveBlock: (blockId: string, x: number, y: number) => void
   onAttachBlockId: (blockId: string, target: SlotTarget) => boolean
-  onAttachNewBlock: (kind: BlockKind, target: SlotTarget) => boolean
+  onAttachNewBlock: (
+    kind: BlockKind,
+    target: SlotTarget,
+  ) => { accepted: boolean; createdFunctionId?: string }
   onAssignReference: (sourceBlockId: string, target: SlotTarget) => boolean
   onRaiseCanvasBlock?: (blockId: string) => void
   surfaceRef: RefObject<HTMLElement | null>
@@ -282,7 +112,6 @@ interface UseBlockDragOptions {
 }
 
 export function useBlockDrag({
-  onDropBlock,
   onMoveBlock,
   onAttachBlockId,
   onAttachNewBlock,
@@ -293,7 +122,6 @@ export function useBlockDrag({
   findBlock,
   getBlocks,
 }: UseBlockDragOptions) {
-  const [isDragOver, setIsDragOver] = useState(false)
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null)
   const [draggingPaletteKind, setDraggingPaletteKind] = useState<BlockKind | null>(
     null,
@@ -374,7 +202,7 @@ export function useBlockDrag({
         return
       }
 
-      const valid = evaluateSlotValidity(target, block, kind, findBlock)
+      const valid = evaluateSlotValidity(target, block, kind, findBlock, getBlocks)
       hoverSlotRef.current = target
       setHoverSlot(target)
       setSlotValidity(valid ? 'valid' : 'invalid')
@@ -407,37 +235,6 @@ export function useBlockDrag({
     setDraggingPaletteKind(null)
     clearSlotHover()
   }, [clearSlotHover])
-
-  const handleCanvasDragOver = useCallback((e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes(PALETTE_DRAG_TYPE)) {
-      e.preventDefault()
-      e.dataTransfer.dropEffect = 'copy'
-      setIsDragOver(true)
-    }
-  }, [])
-
-  const handleCanvasDragLeave = useCallback(() => {
-    setIsDragOver(false)
-  }, [])
-
-  const handleCanvasDrop = useCallback(
-    (surfaceRef: React.RefObject<HTMLElement | null>) =>
-      (e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDragOver(false)
-        setDraggingPaletteKind(null)
-
-        const kind = e.dataTransfer.getData(PALETTE_DRAG_TYPE) as BlockKind
-        if (!kind || !surfaceRef.current) return
-
-        const rect = surfaceRef.current.getBoundingClientRect()
-        const x = e.clientX - rect.left + surfaceRef.current.scrollLeft
-        const y = e.clientY - rect.top + surfaceRef.current.scrollTop
-
-        onDropBlock(kind, Math.max(0, x - 20), Math.max(0, y - 20))
-      },
-    [onDropBlock],
-  )
 
   const handleBlockPointerDown = useCallback(
     (blockId: string, currentX: number, currentY: number) =>
@@ -524,14 +321,14 @@ export function useBlockDrag({
           const block = findBlock(draggedId)
 
           if (dropTarget && block) {
-            const valid = evaluateSlotValidity(dropTarget, block, null, findBlock)
+            const valid = evaluateSlotValidity(dropTarget, block, null, findBlock, getBlocks)
             if (valid) {
               const ok = onAttachBlockId(draggedId, dropTarget)
               if (!ok) {
                 onMoveBlock(draggedId, originX, originY)
                 flashSlotReject(
                   dropTarget,
-                  dropRejectMessage(dropTarget, null, block, undefined, findBlock),
+                  dropRejectMessage(dropTarget, null, block, undefined, findBlock, getBlocks),
                   draggedId,
                 )
               }
@@ -539,7 +336,7 @@ export function useBlockDrag({
               onMoveBlock(draggedId, originX, originY)
               flashSlotReject(
                 dropTarget,
-                dropRejectMessage(dropTarget, null, block, undefined, findBlock),
+                dropRejectMessage(dropTarget, null, block, undefined, findBlock, getBlocks),
                 draggedId,
               )
             }
@@ -617,14 +414,14 @@ export function useBlockDrag({
       const block = findBlock(blockId)
 
       if (dropTarget && block) {
-        const valid = evaluateSlotValidity(dropTarget, block, null, findBlock)
+        const valid = evaluateSlotValidity(dropTarget, block, null, findBlock, getBlocks)
         if (valid) {
           const ok = onAttachBlockId(blockId, dropTarget)
           if (!ok) {
             onMoveBlock(blockId, originX, originY)
             flashSlotReject(
               dropTarget,
-              dropRejectMessage(dropTarget, null, block, undefined, findBlock),
+              dropRejectMessage(dropTarget, null, block, undefined, findBlock, getBlocks),
               blockId,
             )
           }
@@ -632,7 +429,7 @@ export function useBlockDrag({
           onMoveBlock(blockId, originX, originY)
           flashSlotReject(
             dropTarget,
-            dropRejectMessage(dropTarget, null, block, undefined, findBlock),
+            dropRejectMessage(dropTarget, null, block, undefined, findBlock, getBlocks),
             blockId,
           )
         }
@@ -702,20 +499,20 @@ export function useBlockDrag({
         if (!didDrag) {
           openEditor(anchorEl)
         } else if (dropTarget && block) {
-          const valid = evaluateSlotValidity(dropTarget, block, null, findBlock)
+          const valid = evaluateSlotValidity(dropTarget, block, null, findBlock, getBlocks)
           if (valid) {
             const ok = onAttachBlockId(blockId, dropTarget)
             if (!ok) {
               flashSlotReject(
                 dropTarget,
-                dropRejectMessage(dropTarget, null, block, undefined, findBlock),
+                dropRejectMessage(dropTarget, null, block, undefined, findBlock, getBlocks),
                 blockId,
               )
             }
           } else {
             flashSlotReject(
               dropTarget,
-              dropRejectMessage(dropTarget, null, block, undefined, findBlock),
+              dropRejectMessage(dropTarget, null, block, undefined, findBlock, getBlocks),
               blockId,
             )
           }
@@ -781,7 +578,7 @@ export function useBlockDrag({
           } else {
             flashSlotReject(
               dropTarget,
-              dropRejectMessage(dropTarget, null, findBlock(sourceBlockId) ?? null, undefined, findBlock),
+              dropRejectMessage(dropTarget, null, findBlock(sourceBlockId) ?? null, undefined, findBlock, getBlocks),
               sourceBlockId,
             )
           }
@@ -855,7 +652,7 @@ export function useBlockDrag({
         } else if (slotValidity === 'invalid') {
           flashSlotReject(
             target,
-            dropRejectMessage(target, null, findBlock(refId) ?? null, undefined, findBlock),
+            dropRejectMessage(target, null, findBlock(refId) ?? null, undefined, findBlock, getBlocks),
             refId,
           )
         }
@@ -878,7 +675,7 @@ export function useBlockDrag({
           const block = findBlock(draggingBlockId)
           flashSlotReject(
             target,
-            dropRejectMessage(target, null, block ?? null, undefined, findBlock),
+            dropRejectMessage(target, null, block ?? null, undefined, findBlock, getBlocks),
             draggingBlockId,
           )
         }
@@ -895,7 +692,7 @@ export function useBlockDrag({
         }
         flashSlotReject(
           target,
-          dropRejectMessage(target, null, block ?? null, undefined, findBlock),
+          dropRejectMessage(target, null, block ?? null, undefined, findBlock, getBlocks),
           draggingBlockId,
         )
         blockDragRef.current = null
@@ -903,18 +700,18 @@ export function useBlockDrag({
       }
 
       if (draggingPaletteKind && slotValidity === 'valid') {
-        const ok = onAttachNewBlock(draggingPaletteKind, target)
-        if (!ok) {
+        const result = onAttachNewBlock(draggingPaletteKind, target)
+        if (!result.accepted) {
           flashSlotReject(
             target,
-            dropRejectMessage(target, draggingPaletteKind, null, undefined, findBlock),
+            dropRejectMessage(target, draggingPaletteKind, null, undefined, findBlock, getBlocks),
           )
         }
         setDraggingPaletteKind(null)
       } else if (draggingPaletteKind && slotValidity === 'invalid') {
         flashSlotReject(
           target,
-          dropRejectMessage(target, draggingPaletteKind, null, undefined, findBlock),
+          dropRejectMessage(target, draggingPaletteKind, null, undefined, findBlock, getBlocks),
         )
         setDraggingPaletteKind(null)
       }
@@ -957,18 +754,18 @@ export function useBlockDrag({
         const kind = e.dataTransfer.getData(PALETTE_DRAG_TYPE) as BlockKind
         if (!kind) return
 
-        const valid = evaluateSlotValidity(target, null, kind, findBlock)
+        const valid = evaluateSlotValidity(target, null, kind, findBlock, getBlocks)
         if (!valid) {
           flashSlotReject(
             target,
-            dropRejectMessage(target, kind, null, expectedType, findBlock),
+            dropRejectMessage(target, kind, null, expectedType, findBlock, getBlocks),
           )
         } else {
-          const ok = onAttachNewBlock(kind, target)
-          if (!ok) {
+          const result = onAttachNewBlock(kind, target)
+          if (!result.accepted) {
             flashSlotReject(
               target,
-              dropRejectMessage(target, kind, null, expectedType, findBlock),
+              dropRejectMessage(target, kind, null, expectedType, findBlock, getBlocks),
             )
           }
         }
@@ -976,13 +773,11 @@ export function useBlockDrag({
         draggingPaletteKindRef.current = null
         setDraggingPaletteKind(null)
         clearSlotHover()
-        setIsDragOver(false)
       },
     [onAttachNewBlock, findBlock, flashSlotReject, clearSlotHover],
   )
 
   return {
-    isDragOver,
     draggingBlockId,
     draggingPaletteKind,
     draggingReferenceSourceId,
@@ -995,9 +790,6 @@ export function useBlockDrag({
     rejectSlotTarget,
     handlePaletteDragStart,
     handlePaletteDragEnd,
-    handleCanvasDragOver,
-    handleCanvasDragLeave,
-    handleCanvasDrop,
     handleBlockPointerDown,
     handleBlockPointerMove,
     handleBlockPointerUp,

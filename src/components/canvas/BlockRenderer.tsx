@@ -13,6 +13,7 @@ import {
   FunctionCallBlock,
   TypeBlock,
   PrintBlock,
+  ReturnBlock,
   MinimizedBlockChip,
   ValueRefChip,
 } from '../blocks'
@@ -35,6 +36,13 @@ function consumerInputPort(block: BlockNode): { show: boolean; portId: string; t
     return {
       show: true,
       portId: getUsageInPortId({ kind: 'print-value', parentBlockId: block.id }),
+      type: block.data.value.data.valueType,
+    }
+  }
+  if (block.kind === 'return' && block.data.value?.kind === 'valueRef') {
+    return {
+      show: true,
+      portId: getUsageInPortId({ kind: 'return-value', parentBlockId: block.id }),
       type: block.data.value.data.valueType,
     }
   }
@@ -64,13 +72,7 @@ export function BlockRenderer({
   const renderChild = (node: BlockNode, opts?: RenderChildOptions) => {
     const childSlotFit = opts?.slotFit ?? slotFit
     const childInBody = opts?.inStatementBody ?? inStatementBody
-    const childNestedView =
-      opts?.nestedView ??
-      (inEditorPanel
-        ? false
-        : childSlotFit && !childInBody
-          ? true
-          : nestedView ?? childInBody ?? childSlotFit)
+    const childNestedView = opts?.nestedView ?? true
 
     return (
       <BlockRenderer
@@ -209,6 +211,12 @@ export function BlockRenderer({
       return (
         <div className={rendererClass} data-block-id={block.id}>
           <PrintBlock block={block} {...common} />
+        </div>
+      )
+    case 'return':
+      return (
+        <div className={rendererClass} data-block-id={block.id}>
+          <ReturnBlock block={block} {...common} />
         </div>
       )
     default:

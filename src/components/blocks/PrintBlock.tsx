@@ -19,7 +19,6 @@ export function PrintBlock({
   activeBlockId,
   compact = false,
   inStatementBody = false,
-  inEditorPanel = false,
 }: PrintBlockProps) {
   const ctx = useDragContext()
   const { value } = block.data
@@ -52,7 +51,7 @@ export function PrintBlock({
           filled={!!value}
         >
           {value && renderChild
-            ? renderChild(value, { slotFit: true, nestedView: !inEditorPanel })
+            ? renderChild(value, { slotFit: true, nestedView: true })
             : null}
         </BlockSlot>
       </div>

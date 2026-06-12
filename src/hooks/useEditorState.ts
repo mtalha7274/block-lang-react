@@ -11,19 +11,12 @@ import type {
 import { operators } from '../constants/operators'
 import { emptyProgram } from '../constants/emptyProgram'
 import { createBlockFromKind } from '../constants/blockDefaults'
+import { defaultValueForType } from '../lib/validation/typeChecker'
 import {
-  canStatementBodyAcceptBlock,
-  canValueSlotAcceptBlock,
-  canTypeVariableAcceptBlock,
-  canFunctionSignatureAcceptBlock,
-  canCallArgAcceptBlock,
-  canPrintValueAcceptBlock,
-  canIfConditionAcceptBlock,
-  canExpressionOperandAcceptBlock,
-  canTypedValueSlotAcceptBlock,
-  getExpressionOperandType,
-  defaultValueForType,
-} from '../lib/validation/typeChecker'
+  canAttachBlockToSlot,
+  normalizeBlockForSlot,
+  type AttachOptions,
+} from '../lib/validation/slotRules'
 import {
   appendToStatementBody,
   isValidStatementBodyParent,
@@ -38,6 +31,7 @@ import {
   updateFunctionSignature,
   updateCallArgValue,
   updatePrintValue,
+  updateReturnValue,
   updateIfCondition,
   updateExpressionOperand,
   updateForInit,
@@ -47,10 +41,11 @@ import {
 } from '../lib/program/blockTree'
 import { createDefaultPanelPositions } from '../lib/workspace/panelDefaults'
 import { getInScopeValuesForConsumer, isValueSourceBlock } from '../lib/program/scope'
+import { getBlockValueType } from '../lib/program/blockContract'
 import {
-  findFunctionByName,
   linkFunctionCallToTarget,
 } from '../lib/program/callWire'
+import { ensureFunctionForCall } from '../lib/program/ensureFunctionForCall'
 import {
   createValueRefFromSource,
   getUsageInPortId,
@@ -76,54 +71,19 @@ function applyProgramUpdate(
   }
 }
 
-function coercePrimitive(block: BlockNode, expected: ValueType): BlockNode {
-  if (block.kind !== 'primitive') return block
-  return {
-    ...block,
-    data: {
-      valueType: expected,
-      value: defaultValueForType(expected),
-    },
-  }
-}
-
 function slotAcceptsReference(
   target: SlotTarget,
   valueRef: BlockNode,
   blocks: BlockNode[],
 ): boolean {
   if (valueRef.kind !== 'valueRef') return false
-
-  if (target.kind === 'print-value') {
-    return canPrintValueAcceptBlock(valueRef)
-  }
-  if (target.kind === 'if-condition') {
-    return canIfConditionAcceptBlock(valueRef)
-  }
-  if (target.kind === 'variable-value') {
-    const parent = findBlockInTree(blocks, target.parentBlockId)
-    if (parent?.kind !== 'variable') return false
-    return canValueSlotAcceptBlock(parent.data.valueType, valueRef)
-  }
-  if (target.kind === 'call-arg') {
-    const parent = findBlockInTree(blocks, target.parentBlockId)
-    if (parent?.kind !== 'functionCall') return false
-    const arg = parent.data.arguments.find((a) => a.portId === target.argPortId)
-    if (!arg) return false
-    return canCallArgAcceptBlock(arg.type, valueRef)
-  }
-  if (target.kind === 'expression-operand') {
-    const parent = findBlockInTree(blocks, target.parentBlockId)
-    if (parent?.kind !== 'expression') return false
-    return canExpressionOperandAcceptBlock(parent, valueRef)
-  }
-  if (target.kind === 'for-init' || target.kind === 'for-increment') {
-    return canTypedValueSlotAcceptBlock('number', valueRef)
-  }
-  if (target.kind === 'for-condition' || target.kind === 'while-condition') {
-    return canIfConditionAcceptBlock(valueRef)
-  }
-  return false
+  return canAttachBlockToSlot(
+    target,
+    valueRef,
+    (id) => findBlockInTree(blocks, id),
+    {},
+    () => blocks,
+  )
 }
 
 function assignReferenceToSlot(
@@ -160,6 +120,8 @@ function assignReferenceToSlot(
 
   if (target.kind === 'print-value') {
     blocks = updatePrintValue(blocks, consumerId, valueRef)
+  } else if (target.kind === 'return-value') {
+    blocks = updateReturnValue(blocks, consumerId, valueRef)
   } else if (target.kind === 'if-condition') {
     blocks = updateIfCondition(blocks, consumerId, valueRef)
   } else if (target.kind === 'variable-value') {
@@ -205,18 +167,6 @@ export function useEditorState() {
     () => createDefaultPanelPositions(),
   )
 
-  const addBlock = useCallback((kind: BlockKind, x: number, y: number): string | undefined => {
-    if (kind === 'main') return undefined
-
-    const block = createBlockFromKind(kind)
-    setProgram((prev) => ({
-      ...prev,
-      blocks: [...prev.blocks, block],
-      placements: [...prev.placements, { blockId: block.id, x, y }],
-    }))
-    return block.id
-  }, [])
-
   const moveBlock = useCallback((blockId: string, x: number, y: number) => {
     setProgram((prev) => ({
       ...prev,
@@ -252,14 +202,7 @@ export function useEditorState() {
         }
         if (block.kind === 'variable') {
           const nested = block.data.value
-          const nestedType =
-            nested?.kind === 'primitive'
-              ? nested.data.valueType
-              : nested?.kind === 'functionCall'
-                ? nested.data.returnType
-                : nested?.kind === 'expression'
-                  ? nested.data.resultType
-                  : null
+          const nestedType = nested ? getBlockValueType(nested) : null
           const clearValue = nestedType !== null && nestedType !== valueType
           return {
             ...block,
@@ -430,10 +373,17 @@ export function useEditorState() {
   const updateFunctionCallName = useCallback(
     (blockId: string, name: string) => {
       setProgram((prev) => {
-        const fn = findFunctionByName(prev.blocks, name)
-        const blocks = updateBlockInTree(prev.blocks, blockId, (block) => {
+        const call = findBlockInTree(prev.blocks, blockId)
+        if (!call || call.kind !== 'functionCall') return prev
+
+        const callWithName: Extract<BlockNode, { kind: 'functionCall' }> = {
+          ...call,
+          data: { ...call.data, functionName: name },
+        }
+        const ensured = ensureFunctionForCall(prev.blocks, callWithName)
+        const blocks = updateBlockInTree(ensured.blocks, blockId, (block) => {
           if (block.kind !== 'functionCall') return block
-          return linkFunctionCallToTarget(block, fn, name)
+          return linkFunctionCallToTarget(block, ensured.fn, name)
         })
         return applyProgramUpdate(prev, blocks)
       })
@@ -496,80 +446,83 @@ export function useEditorState() {
     prev: ProgramDocument,
     block: BlockNode,
     target: SlotTarget,
-  ): { next: ProgramDocument; accepted: boolean } => {
+    options: AttachOptions = {},
+  ): { next: ProgramDocument; accepted: boolean; createdFunctionId?: string } => {
+    const findInPrev = (id: string) => findBlockInTree(prev.blocks, id)
+    const getBlocks = () => prev.blocks
+    const blockToAttach = normalizeBlockForSlot(
+      target,
+      block,
+      findInPrev,
+      options,
+      getBlocks,
+    )
+    if (!canAttachBlockToSlot(target, blockToAttach, findInPrev, options, getBlocks)) {
+      return { next: prev, accepted: false }
+    }
+
+    const blocksWithoutSource = prev.blocks.filter((b) => b.id !== block.id)
+    const placementsWithoutSource = prev.placements.filter((p) => p.blockId !== block.id)
+
     if (target.kind === 'variable-value') {
       const parent = findBlockInTree(prev.blocks, target.parentBlockId)
       if (!parent || parent.kind !== 'variable') return { next: prev, accepted: false }
-
-      let blockToAttach = block
-      if (block.kind === 'primitive') {
-        blockToAttach = {
-          ...block,
-          data: {
-            valueType: parent.data.valueType,
-            value: defaultValueForType(parent.data.valueType),
-          },
-        }
-      }
-
-      if (!canValueSlotAcceptBlock(parent.data.valueType, blockToAttach)) {
-        return { next: prev, accepted: false }
-      }
       return {
         next: {
           ...prev,
           blocks: updateNestedVariableValue(
-            prev.blocks.filter((b) => b.id !== block.id),
+            blocksWithoutSource,
             target.parentBlockId,
             blockToAttach,
           ),
-          placements: prev.placements.filter((p) => p.blockId !== block.id),
+          placements: placementsWithoutSource,
         },
         accepted: true,
       }
     }
 
     if (target.kind === 'statement-body') {
-      if (!canStatementBodyAcceptBlock(block)) return { next: prev, accepted: false }
       const parent = findBlockInTree(prev.blocks, target.parentBlockId)
       if (!parent || !isValidStatementBodyParent(parent, target.region)) {
         return { next: prev, accepted: false }
       }
-      let blockToAttach = block
-      if (block.kind === 'functionCall') {
-        const fn = findFunctionByName(prev.blocks, block.data.functionName)
-        if (fn) {
-          blockToAttach = linkFunctionCallToTarget(block, fn)
-        }
+      let statementToAttach = blockToAttach
+      let blocksForAttach = blocksWithoutSource
+      let createdFunctionId: string | undefined
+      if (blockToAttach.kind === 'functionCall') {
+        const ensured = ensureFunctionForCall(blocksWithoutSource, blockToAttach)
+        blocksForAttach = ensured.blocks
+        if (ensured.created) createdFunctionId = ensured.fn.id
+        statementToAttach = linkFunctionCallToTarget(blockToAttach, ensured.fn)
       }
       return {
         next: {
           ...prev,
           blocks: appendToStatementBody(
-            prev.blocks.filter((b) => b.id !== block.id),
+            blocksForAttach,
             target.parentBlockId,
             target.region,
-            blockToAttach,
+            statementToAttach,
           ),
-          placements: prev.placements.filter((p) => p.blockId !== block.id),
+          placements: placementsWithoutSource,
         },
         accepted: true,
+        createdFunctionId,
       }
     }
 
     if (target.kind === 'type-variable') {
       const parent = findBlockInTree(prev.blocks, target.parentBlockId)
       if (!parent || parent.kind !== 'type') return { next: prev, accepted: false }
-      if (!canTypeVariableAcceptBlock(block)) return { next: prev, accepted: false }
       return {
         next: {
           ...prev,
           blocks: appendToTypeVariables(
-            prev.blocks.filter((b) => b.id !== block.id),
+            blocksWithoutSource,
             target.parentBlockId,
-            block,
+            blockToAttach,
           ),
-          placements: prev.placements.filter((p) => p.blockId !== block.id),
+          placements: placementsWithoutSource,
         },
         accepted: true,
       }
@@ -579,16 +532,15 @@ export function useEditorState() {
       const parent = findBlockInTree(prev.blocks, target.parentBlockId)
       if (!parent || parent.kind !== 'function') return { next: prev, accepted: false }
       if (parent.data.signature) return { next: prev, accepted: false }
-      if (!canFunctionSignatureAcceptBlock(block)) return { next: prev, accepted: false }
       return {
         next: {
           ...prev,
           blocks: updateFunctionSignature(
-            prev.blocks.filter((b) => b.id !== block.id),
+            blocksWithoutSource,
             target.parentBlockId,
-            block,
+            blockToAttach,
           ),
-          placements: prev.placements.filter((p) => p.blockId !== block.id),
+          placements: placementsWithoutSource,
         },
         accepted: true,
       }
@@ -600,19 +552,17 @@ export function useEditorState() {
         return { next: prev, accepted: false }
       }
       const arg = parent.data.arguments.find((a) => a.portId === target.argPortId)
-      if (!arg || !canCallArgAcceptBlock(arg.type, block)) {
-        return { next: prev, accepted: false }
-      }
+      if (!arg) return { next: prev, accepted: false }
       return {
         next: {
           ...prev,
           blocks: updateCallArgValue(
-            prev.blocks.filter((b) => b.id !== block.id),
+            blocksWithoutSource,
             target.parentBlockId,
             target.argPortId,
-            block,
+            blockToAttach,
           ),
-          placements: prev.placements.filter((p) => p.blockId !== block.id),
+          placements: placementsWithoutSource,
         },
         accepted: true,
       }
@@ -621,16 +571,32 @@ export function useEditorState() {
     if (target.kind === 'print-value') {
       const parent = findBlockInTree(prev.blocks, target.parentBlockId)
       if (!parent || parent.kind !== 'print') return { next: prev, accepted: false }
-      if (!canPrintValueAcceptBlock(block)) return { next: prev, accepted: false }
       return {
         next: {
           ...prev,
           blocks: updatePrintValue(
-            prev.blocks.filter((b) => b.id !== block.id),
+            blocksWithoutSource,
             target.parentBlockId,
-            block,
+            blockToAttach,
           ),
-          placements: prev.placements.filter((p) => p.blockId !== block.id),
+          placements: placementsWithoutSource,
+        },
+        accepted: true,
+      }
+    }
+
+    if (target.kind === 'return-value') {
+      const parent = findBlockInTree(prev.blocks, target.parentBlockId)
+      if (!parent || parent.kind !== 'return') return { next: prev, accepted: false }
+      return {
+        next: {
+          ...prev,
+          blocks: updateReturnValue(
+            blocksWithoutSource,
+            target.parentBlockId,
+            blockToAttach,
+          ),
+          placements: placementsWithoutSource,
         },
         accepted: true,
       }
@@ -639,16 +605,15 @@ export function useEditorState() {
     if (target.kind === 'if-condition') {
       const parent = findBlockInTree(prev.blocks, target.parentBlockId)
       if (!parent || parent.kind !== 'if') return { next: prev, accepted: false }
-      if (!canIfConditionAcceptBlock(block)) return { next: prev, accepted: false }
       return {
         next: {
           ...prev,
           blocks: updateIfCondition(
-            prev.blocks.filter((b) => b.id !== block.id),
+            blocksWithoutSource,
             target.parentBlockId,
-            block,
+            blockToAttach,
           ),
-          placements: prev.placements.filter((p) => p.blockId !== block.id),
+          placements: placementsWithoutSource,
         },
         accepted: true,
       }
@@ -657,21 +622,16 @@ export function useEditorState() {
     if (target.kind === 'expression-operand') {
       const parent = findBlockInTree(prev.blocks, target.parentBlockId)
       if (!parent || parent.kind !== 'expression') return { next: prev, accepted: false }
-      const expected = getExpressionOperandType(parent.data.operator)
-      const blockToAttach = coercePrimitive(block, expected)
-      if (!canExpressionOperandAcceptBlock(parent, blockToAttach)) {
-        return { next: prev, accepted: false }
-      }
       return {
         next: {
           ...prev,
           blocks: updateExpressionOperand(
-            prev.blocks.filter((b) => b.id !== block.id),
+            blocksWithoutSource,
             target.parentBlockId,
             target.side,
             blockToAttach,
           ),
-          placements: prev.placements.filter((p) => p.blockId !== block.id),
+          placements: placementsWithoutSource,
         },
         accepted: true,
       }
@@ -680,19 +640,15 @@ export function useEditorState() {
     if (target.kind === 'for-init') {
       const parent = findBlockInTree(prev.blocks, target.parentBlockId)
       if (!parent || parent.kind !== 'for') return { next: prev, accepted: false }
-      const blockToAttach = coercePrimitive(block, 'number')
-      if (!canTypedValueSlotAcceptBlock('number', blockToAttach)) {
-        return { next: prev, accepted: false }
-      }
       return {
         next: {
           ...prev,
           blocks: updateForInit(
-            prev.blocks.filter((b) => b.id !== block.id),
+            blocksWithoutSource,
             target.parentBlockId,
             blockToAttach,
           ),
-          placements: prev.placements.filter((p) => p.blockId !== block.id),
+          placements: placementsWithoutSource,
         },
         accepted: true,
       }
@@ -701,16 +657,15 @@ export function useEditorState() {
     if (target.kind === 'for-condition') {
       const parent = findBlockInTree(prev.blocks, target.parentBlockId)
       if (!parent || parent.kind !== 'for') return { next: prev, accepted: false }
-      if (!canIfConditionAcceptBlock(block)) return { next: prev, accepted: false }
       return {
         next: {
           ...prev,
           blocks: updateForCondition(
-            prev.blocks.filter((b) => b.id !== block.id),
+            blocksWithoutSource,
             target.parentBlockId,
-            block,
+            blockToAttach,
           ),
-          placements: prev.placements.filter((p) => p.blockId !== block.id),
+          placements: placementsWithoutSource,
         },
         accepted: true,
       }
@@ -719,19 +674,15 @@ export function useEditorState() {
     if (target.kind === 'for-increment') {
       const parent = findBlockInTree(prev.blocks, target.parentBlockId)
       if (!parent || parent.kind !== 'for') return { next: prev, accepted: false }
-      const blockToAttach = coercePrimitive(block, 'number')
-      if (!canTypedValueSlotAcceptBlock('number', blockToAttach)) {
-        return { next: prev, accepted: false }
-      }
       return {
         next: {
           ...prev,
           blocks: updateForIncrement(
-            prev.blocks.filter((b) => b.id !== block.id),
+            blocksWithoutSource,
             target.parentBlockId,
             blockToAttach,
           ),
-          placements: prev.placements.filter((p) => p.blockId !== block.id),
+          placements: placementsWithoutSource,
         },
         accepted: true,
       }
@@ -740,16 +691,15 @@ export function useEditorState() {
     if (target.kind === 'while-condition') {
       const parent = findBlockInTree(prev.blocks, target.parentBlockId)
       if (!parent || parent.kind !== 'while') return { next: prev, accepted: false }
-      if (!canIfConditionAcceptBlock(block)) return { next: prev, accepted: false }
       return {
         next: {
           ...prev,
           blocks: updateWhileCondition(
-            prev.blocks.filter((b) => b.id !== block.id),
+            blocksWithoutSource,
             target.parentBlockId,
-            block,
+            blockToAttach,
           ),
-          placements: prev.placements.filter((p) => p.blockId !== block.id),
+          placements: placementsWithoutSource,
         },
         accepted: true,
       }
@@ -757,19 +707,6 @@ export function useEditorState() {
 
     return { next: prev, accepted: false }
   }
-
-  const attachBlockToSlot = useCallback(
-    (block: BlockNode, target: SlotTarget): boolean => {
-      let accepted = false
-      setProgram((prev) => {
-        const result = attachBlockToSlotInner(prev, block, target)
-        accepted = result.accepted
-        return result.next
-      })
-      return accepted
-    },
-    [],
-  )
 
   const attachBlockIdToSlot = useCallback(
     (blockId: string, target: SlotTarget): boolean => {
@@ -823,12 +760,26 @@ export function useEditorState() {
   )
 
   const attachNewBlockToSlot = useCallback(
-    (kind: BlockKind, target: SlotTarget): boolean => {
-      if (kind === 'main') return false
+    (
+      kind: BlockKind,
+      target: SlotTarget,
+    ): { accepted: boolean; createdFunctionId?: string } => {
+      if (kind === 'main') return { accepted: false }
       const block = createBlockFromKind(kind)
-      return attachBlockToSlot(block, target)
+      let result = { accepted: false, createdFunctionId: undefined as string | undefined }
+      setProgram((prev) => {
+        const inner = attachBlockToSlotInner(prev, block, target, {
+          allowPrimitiveTypeInit: true,
+        })
+        result = {
+          accepted: inner.accepted,
+          createdFunctionId: inner.createdFunctionId,
+        }
+        return inner.next
+      })
+      return result
     },
-    [attachBlockToSlot],
+    [],
   )
 
   const detachNestedBlock = useCallback((blockId: string) => {
@@ -839,6 +790,7 @@ export function useEditorState() {
       if (
         parent &&
         (parent.target.kind === 'print-value' ||
+          parent.target.kind === 'return-value' ||
           parent.target.kind === 'if-condition' ||
           parent.target.kind === 'variable-value' ||
           parent.target.kind === 'call-arg' ||
@@ -878,7 +830,6 @@ export function useEditorState() {
   return {
     program,
     panelPositions,
-    addBlock,
     moveBlock,
     movePanel,
     resetProgram,

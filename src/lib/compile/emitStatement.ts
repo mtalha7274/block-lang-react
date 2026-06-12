@@ -36,12 +36,6 @@ export function emitStatement(
     case 'expression': {
       const expr = emitExpression(block, ctx, errors, depth)
       if (expr === null) return []
-      if (ctx.inFunctionBody && !block.data.resultName) {
-        return [`${ind}return ${expr};`]
-      }
-      if (ctx.inFunctionBody && block.data.resultName) {
-        return [`${ind}return ${expr};`]
-      }
       if (block.data.resultName) {
         const name = ctx.sanitizeIdentifier(block.data.resultName)
         return [`${ind}let ${name}: ${block.data.resultType} = ${expr};`]
@@ -64,6 +58,21 @@ export function emitStatement(
         return [`${ind}// Error: print block missing value`]
       }
       return [`${ind}console.log(${expr});`]
+    }
+
+    case 'return': {
+      if (!ctx.inFunctionBody) {
+        errors.push({ blockId: block.id, message: 'Return outside function' })
+        return [`${ind}// Error: return outside function`]
+      }
+      if (ctx.currentFunctionReturnType === 'void' || !block.data.value) {
+        return [`${ind}return;`]
+      }
+      const expr = emitExpression(block.data.value, ctx, errors, depth)
+      if (expr === null) {
+        return [`${ind}// Error: return missing value`]
+      }
+      return [`${ind}return ${expr};`]
     }
 
     case 'if': {
@@ -173,11 +182,14 @@ export function emitFunction(
   ]
 
   const prevInFunction = ctx.inFunctionBody
+  const prevReturnType = ctx.currentFunctionReturnType
   ctx.inFunctionBody = true
+  ctx.currentFunctionReturnType = block.data.returnType
   for (const stmt of block.data.body) {
     lines.push(...emitStatement(stmt, ctx, errors, 1))
   }
   ctx.inFunctionBody = prevInFunction
+  ctx.currentFunctionReturnType = prevReturnType
 
   if (block.data.body.length === 0 && block.data.returnType === 'void') {
     lines.push('  // empty')

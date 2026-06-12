@@ -93,6 +93,12 @@ export function createBlockFromKind(kind: BlockKind): BlockNode {
         kind: 'print',
         data: {},
       }
+    case 'return':
+      return {
+        id: nextId('return'),
+        kind: 'return',
+        data: {},
+      }
     case 'valueRef':
       throw new Error('valueRef blocks are created via in-scope references only')
   }

@@ -17,6 +17,7 @@ import { blockRegistry } from './constants'
 import { compileProgram } from './lib/compile'
 import { validateProgram } from './lib/validation/validateProgram'
 import { ReferenceDragGhost } from './components/blocks/ReferenceDragGhost'
+import { resolveBlockEditorTargetId } from './lib/program/callWire'
 import { findBlockInTree, getStatementLineNumber } from './lib/program/blockTree'
 import { collectDescendantBlockIds } from './lib/program/collectDescendantBlockIds'
 import { computeEditorPanelPosition } from './lib/workspace/editorPanelPlacement'
@@ -26,7 +27,7 @@ import {
   INSPECTOR_PANEL_WIDTH,
   PALETTE_PANEL_WIDTH,
 } from './lib/workspace/panelDefaults'
-import type { BlockKind, PanelTab } from './types'
+import type { BlockKind, PanelTab, SlotTarget } from './types'
 import './App.css'
 
 function App() {
@@ -43,7 +44,6 @@ function App() {
   const {
     program,
     panelPositions,
-    addBlock,
     moveBlock,
     movePanel,
     resetProgram,
@@ -97,14 +97,6 @@ function App() {
     [panelZ],
   )
 
-  const handleDropBlock = useCallback(
-    (kind: BlockKind, x: number, y: number) => {
-      const blockId = addBlock(kind, x, y)
-      if (blockId) raiseCanvasBlock(blockId)
-    },
-    [addBlock, raiseCanvasBlock],
-  )
-
   const raisePanel = useCallback(
     (panelId: string) => {
       panelZ.raise(panelId)
@@ -112,25 +104,22 @@ function App() {
     [panelZ],
   )
 
-  const drag = useBlockDrag({
-    onDropBlock: handleDropBlock,
-    onMoveBlock: moveBlock,
-    onAttachBlockId: attachBlockIdToSlot,
-    onAttachNewBlock: attachNewBlockToSlot,
-    onAssignReference: assignInScopeReference,
-    onRaiseCanvasBlock: raiseCanvasBlock,
-    surfaceRef,
-    scrollRef,
-    findBlock,
-    getBlocks: () => program.blocks,
-  })
+  const getEditorTargetBlockId = useCallback(
+    (blockId: string) => {
+      const block = findBlock(blockId)
+      if (!block) return blockId
+      return resolveBlockEditorTargetId(block, program.blocks)
+    },
+    [findBlock, program.blocks],
+  )
 
   const openBlockEditor = useCallback(
     (blockId: string, anchorEl?: HTMLElement | null) => {
-      const panelId = `blockEditor-${blockId}`
+      const editorBlockId = getEditorTargetBlockId(blockId)
+      const panelId = `blockEditor-${editorBlockId}`
 
       setEditorStack((prev) => {
-        if (prev.includes(blockId)) return prev
+        if (prev.includes(editorBlockId)) return prev
 
         if (
           anchorEl &&
@@ -145,13 +134,36 @@ function App() {
           movePanel(panelId, pos.x, pos.y)
         }
 
-        return [...prev, blockId]
+        return [...prev, editorBlockId]
       })
 
       raisePanel(panelId)
     },
-    [movePanel, panelPositions, raisePanel],
+    [getEditorTargetBlockId, movePanel, panelPositions, raisePanel],
   )
+
+  const attachNewBlockFromPalette = useCallback(
+    (kind: BlockKind, target: SlotTarget) => {
+      const result = attachNewBlockToSlot(kind, target)
+      if (result.createdFunctionId) {
+        openBlockEditor(result.createdFunctionId)
+      }
+      return result
+    },
+    [attachNewBlockToSlot, openBlockEditor],
+  )
+
+  const drag = useBlockDrag({
+    onMoveBlock: moveBlock,
+    onAttachBlockId: attachBlockIdToSlot,
+    onAttachNewBlock: attachNewBlockFromPalette,
+    onAssignReference: assignInScopeReference,
+    onRaiseCanvasBlock: raiseCanvasBlock,
+    surfaceRef,
+    scrollRef,
+    findBlock,
+    getBlocks: () => program.blocks,
+  })
 
   const closeBlockEditor = useCallback((blockId: string) => {
     setEditorStack((prev) => prev.filter((id) => id !== blockId))
@@ -219,12 +231,14 @@ function App() {
       handleSlotDragOver: drag.handleSlotDragOver,
       handleSlotDrop: drag.handleSlotDrop,
       openBlockEditor,
+      getEditorTargetBlockId,
       closeBlockEditor,
       closeNestedEditors,
       detachNestedBlock: handleDetachNestedBlock,
       removeTopLevelBlock: handleRemoveTopLevelBlock,
       assignInScopeReference,
       getInScopeValues,
+      getBlocks: () => program.blocks,
       isNested: false,
     }),
     [
@@ -243,12 +257,14 @@ function App() {
       updateExpressionResultName,
       updateBlockLayout,
       openBlockEditor,
+      getEditorTargetBlockId,
       closeBlockEditor,
       closeNestedEditors,
       handleDetachNestedBlock,
       handleRemoveTopLevelBlock,
       assignInScopeReference,
       getInScopeValues,
+      program.blocks,
     ],
   )
 
@@ -265,13 +281,6 @@ function App() {
       moveBlock('main', x, y)
     },
     [moveBlock],
-  )
-
-  const onCanvasDrop = useCallback(
-    (e: React.DragEvent) => {
-      drag.handleCanvasDrop(surfaceRef)(e)
-    },
-    [drag],
   )
 
   const isEmulating = emulator.isActive
@@ -323,11 +332,7 @@ function App() {
             <WorkspaceCanvas
               surfaceRef={surfaceRef}
               scrollRef={scrollRef}
-              isDragOver={drag.isDragOver}
               onScrollOffsetChange={setScrollOffset}
-              onDragOver={drag.handleCanvasDragOver}
-              onDragLeave={drag.handleCanvasDragLeave}
-              onDrop={onCanvasDrop}
             />
 
             <CanvasBlocksLayer

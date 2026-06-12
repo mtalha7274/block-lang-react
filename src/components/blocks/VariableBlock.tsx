@@ -21,7 +21,6 @@ export function VariableBlock({
   activeBlockId,
   compact = false,
   inStatementBody = false,
-  inEditorPanel = false,
 }: VariableBlockProps) {
   const ctx = useDragContext()
   const { valueType, name, value } = block.data
@@ -86,7 +85,7 @@ export function VariableBlock({
             filled={!!value}
           >
             {value && renderChild
-              ? renderChild(value, { slotFit: true, nestedView: !inEditorPanel })
+              ? renderChild(value, { slotFit: true, nestedView: true })
               : null}
           </BlockSlot>
         </div>

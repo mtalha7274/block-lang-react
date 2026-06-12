@@ -149,15 +149,13 @@ function callFunction(
     .join(', ')
   runtime.pushFrame(fn.id, `${fn.data.name}(${argLabel})`, locals)
 
-  let returnValue: RuntimeValue = fn.data.returnType === 'void' ? false : 0
+  let returnValue: RuntimeValue =
+    fn.data.returnType === 'void' ? false : defaultForType(fn.data.returnType)
 
   try {
-    for (const stmt of fn.data.body) {
-      const result = executeStatement(stmt, runtime, doc, true)
-      if (result !== undefined) {
-        returnValue = result
-        break
-      }
+    const bodyResult = executeBlockList(fn.data.body, runtime, doc, true)
+    if (bodyResult !== undefined) {
+      returnValue = bodyResult
     }
   } finally {
     runtime.popFrame()
@@ -200,9 +198,6 @@ export function executeStatement(
 
     case 'expression': {
       const val = evaluateExpression(block, runtime, doc)
-      if (inFunction) {
-        return val
-      }
       if (block.data.resultName) {
         runtime.set(block.data.resultName, val, block.data.resultType)
       }
@@ -223,16 +218,28 @@ export function executeStatement(
       return undefined
     }
 
+    case 'return': {
+      if (!inFunction) {
+        throw new EmulationError('Return outside function', block.id)
+      }
+      if (block.data.value) {
+        return evaluateExpression(block.data.value, runtime, doc)
+      }
+      return undefined
+    }
+
     case 'if': {
       if (!block.data.condition) {
         throw new EmulationError('If block missing condition', block.id)
       }
       const cond = evaluateExpression(block.data.condition, runtime, doc)
+      let branchResult: RuntimeValue | undefined
       if (cond) {
-        executeBlockList(block.data.trueBranch, runtime, doc, inFunction)
+        branchResult = executeBlockList(block.data.trueBranch, runtime, doc, inFunction)
       } else if (block.data.falseBranch) {
-        executeBlockList(block.data.falseBranch, runtime, doc, inFunction)
+        branchResult = executeBlockList(block.data.falseBranch, runtime, doc, inFunction)
       }
+      if (branchResult !== undefined && inFunction) return branchResult
       return undefined
     }
 
@@ -245,7 +252,8 @@ export function executeStatement(
           const cond = evaluateExpression(block.data.condition, runtime, doc)
           if (!cond) break
         }
-        executeBlockList(block.data.body, runtime, doc, inFunction)
+        const bodyResult = executeBlockList(block.data.body, runtime, doc, inFunction)
+        if (bodyResult !== undefined && inFunction) return bodyResult
         if (block.data.increment) {
           applyForIncrement(block.data.increment, runtime, doc)
         }
@@ -258,7 +266,8 @@ export function executeStatement(
         throw new EmulationError('While block missing condition', block.id)
       }
       while (evaluateExpression(block.data.condition, runtime, doc)) {
-        executeBlockList(block.data.body, runtime, doc, inFunction)
+        const bodyResult = executeBlockList(block.data.body, runtime, doc, inFunction)
+        if (bodyResult !== undefined && inFunction) return bodyResult
       }
       return undefined
     }

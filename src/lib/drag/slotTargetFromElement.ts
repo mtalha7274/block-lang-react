@@ -14,6 +14,8 @@ export function slotTargetFromElement(el: Element | null): SlotTarget | null {
       return { kind: 'variable-value', parentBlockId }
     case 'print-value':
       return { kind: 'print-value', parentBlockId }
+    case 'return-value':
+      return { kind: 'return-value', parentBlockId }
     case 'if-condition':
       return { kind: 'if-condition', parentBlockId }
     case 'type-variable':

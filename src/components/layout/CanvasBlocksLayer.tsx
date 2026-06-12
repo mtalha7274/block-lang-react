@@ -57,7 +57,7 @@ export function CanvasBlocksLayer({
   )
 
   const topLevelBlocks = program.blocks
-    .filter((b) => placementMap.has(b.id))
+    .filter((b) => b.kind === 'main' && placementMap.has(b.id))
     .sort((a, b) => {
       const za = getBlockZ(a.id)
       const zb = getBlockZ(b.id)
@@ -110,13 +110,12 @@ export function CanvasBlocksLayer({
 
       {topLevelBlocks.map((block) => {
         const placement = placementMap.get(block.id)!
-        const isMain = block.kind === 'main'
         const isDragging = dragContext.draggingBlockId === block.id
 
         return (
           <div
             key={block.id}
-            ref={isMain ? mainBlockRef : undefined}
+            ref={mainBlockRef}
             className={`canvas-blocks-layer__block${isDragging ? ' canvas-blocks-layer__block--dragging' : ''}`}
             data-block-id={block.id}
             style={{
@@ -126,16 +125,6 @@ export function CanvasBlocksLayer({
             }}
             onPointerDown={handleBlockFocus(block.id)}
           >
-            {!isMain && (
-              <button
-                type="button"
-                className="canvas-blocks-layer__remove-handle"
-                aria-label="Remove block from canvas"
-                onClick={() => dragContext.removeTopLevelBlock(block.id)}
-              >
-                ×
-              </button>
-            )}
             <ResizableContainer
               blockId={block.id}
               layoutOverride={block.visual?.layout}

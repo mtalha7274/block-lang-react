@@ -11,7 +11,7 @@ export function BlockPalette({ onDragStart, onDragEnd }: BlockPaletteProps) {
   return (
     <nav className="palette" aria-label="Block palette">
       <p className="palette__tip">
-        Drag blocks onto the canvas, then snap Constants into Variables.
+        Drag blocks into slots inside Main or open blocks — not onto empty canvas.
       </p>
       <div className="palette__sections">
         {learningStages.map((stage) => (

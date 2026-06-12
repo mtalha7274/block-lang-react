@@ -25,6 +25,6 @@ export const learningStages: LearningStage[] = [
   {
     id: 'functions',
     label: 'Functions',
-    blockKinds: ['function', 'functionCall'],
+    blockKinds: ['functionCall', 'return'],
   },
 ]

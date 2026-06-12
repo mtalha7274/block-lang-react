@@ -17,9 +17,8 @@ export function ForLoopBlock({
   renderChild,
   activeBlockId,
   compact = false,
-  inEditorPanel = false,
 }: ForLoopBlockProps) {
-  const slotChildOpts = { slotFit: true, nestedView: !inEditorPanel } as const
+  const slotChildOpts = { slotFit: true, nestedView: true } as const
   const { init, condition, increment, body } = block.data
   const state =
     activeBlockId === block.id ? 'active' : block.visual?.state ?? 'default'

@@ -77,6 +77,18 @@ export function resolveCallTarget(
   return byName ?? null
 }
 
+/** Block editor target: function calls open their linked function definition. */
+export function resolveBlockEditorTargetId(
+  block: BlockNode,
+  topLevelBlocks: BlockNode[],
+): string {
+  if (block.kind === 'functionCall') {
+    const fn = resolveCallTarget(block, topLevelBlocks)
+    if (fn) return fn.id
+  }
+  return block.id
+}
+
 export function linkFunctionCallToTarget(
   call: FunctionCallBlock,
   fn: FunctionBlock | null,

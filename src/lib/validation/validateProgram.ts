@@ -3,6 +3,7 @@ import {
   canExpressionOperandAcceptBlock,
   getBlockValueType,
 } from './typeChecker'
+import { findEnclosingFunction } from '../program/enclosingFunction'
 
 export interface ProgramValidationError {
   blockId: BlockId
@@ -20,6 +21,9 @@ function visitBlock(block: BlockNode, visit: (block: BlockNode) => void): void {
       if (block.data.value) visitBlock(block.data.value, visit)
       break
     case 'print':
+      if (block.data.value) visitBlock(block.data.value, visit)
+      break
+    case 'return':
       if (block.data.value) visitBlock(block.data.value, visit)
       break
     case 'functionCall':
@@ -58,7 +62,11 @@ function visitBlock(block: BlockNode, visit: (block: BlockNode) => void): void {
   }
 }
 
-function validateBlock(block: BlockNode, errors: ProgramValidationError[]): void {
+function validateBlock(
+  block: BlockNode,
+  errors: ProgramValidationError[],
+  blocks: BlockNode[],
+): void {
   if (block.visual?.state === 'error') {
     errors.push({
       blockId: block.id,
@@ -117,12 +125,39 @@ function validateBlock(block: BlockNode, errors: ProgramValidationError[]): void
       })
     }
   }
+
+  if (block.kind === 'return') {
+    const fn = findEnclosingFunction(blocks, block.id)
+    if (!fn) {
+      errors.push({
+        blockId: block.id,
+        message: 'Return must be inside a function',
+      })
+      return
+    }
+    if (fn.data.returnType === 'void' && block.data.value) {
+      errors.push({
+        blockId: block.id,
+        message: 'Void functions cannot return a value',
+      })
+      return
+    }
+    if (block.data.value && fn.data.returnType !== 'void') {
+      const valueType = getBlockValueType(block.data.value)
+      if (valueType !== fn.data.returnType) {
+        errors.push({
+          blockId: block.id,
+          message: `Return value must be ${fn.data.returnType}, not ${valueType ?? 'unknown'}`,
+        })
+      }
+    }
+  }
 }
 
 export function validateProgram(doc: ProgramDocument): ProgramValidationError[] {
   const errors: ProgramValidationError[] = []
   doc.blocks.forEach((block) => {
-    visitBlock(block, (b) => validateBlock(b, errors))
+    visitBlock(block, (b) => validateBlock(b, errors, doc.blocks))
   })
   return errors
 }

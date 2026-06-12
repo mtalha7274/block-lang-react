@@ -21,7 +21,6 @@ export function FunctionCallBlock({
   activeBlockId,
   compact = false,
   inStatementBody = false,
-  inEditorPanel = false,
 }: FunctionCallBlockProps) {
   const ctx = useDragContext()
   const { functionName, returnType, arguments: args } = block.data
@@ -91,7 +90,7 @@ export function FunctionCallBlock({
                   {arg.value && renderChild
                     ? renderChild(arg.value, {
                         slotFit: true,
-                        nestedView: !inEditorPanel,
+                        nestedView: true,
                       })
                     : null}
                 </BlockSlot>

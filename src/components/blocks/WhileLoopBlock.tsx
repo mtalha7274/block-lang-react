@@ -17,7 +17,6 @@ export function WhileLoopBlock({
   renderChild,
   activeBlockId,
   compact = false,
-  inEditorPanel = false,
 }: WhileLoopBlockProps) {
   const { condition, body } = block.data
   const state =
@@ -43,7 +42,7 @@ export function WhileLoopBlock({
         hint="Drop a boolean condition here"
       >
         {condition && renderChild
-          ? renderChild(condition, { slotFit: true, nestedView: !inEditorPanel })
+          ? renderChild(condition, { slotFit: true, nestedView: true })
           : null}
       </BlockSlot>
       <div className="while-loop__body">

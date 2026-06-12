@@ -63,12 +63,14 @@ export interface DragContextValue {
     expectedType?: ValueType,
   ) => (e: React.DragEvent) => void
   openBlockEditor: (blockId: string, anchorEl?: HTMLElement | null) => void
+  getEditorTargetBlockId: (blockId: string) => string
   closeBlockEditor: (blockId: string) => void
   closeNestedEditors: (containerBlockId: string) => void
   detachNestedBlock: (blockId: string) => void
   removeTopLevelBlock: (blockId: string) => void
   assignInScopeReference: (sourceBlockId: string, target: SlotTarget) => boolean
   getInScopeValues: (consumerBlockId: string) => import('../../lib/program/scope').InScopeValue[]
+  getBlocks: () => BlockNode[]
   isNested: boolean
 }
 
@@ -110,12 +112,14 @@ export function useDragContext(): DragContextValue {
       onReferenceDragEnd: () => {},
       onNestedChipPointerDown: undefined,
       openBlockEditor: () => {},
+      getEditorTargetBlockId: (blockId) => blockId,
       closeBlockEditor: () => {},
       closeNestedEditors: () => {},
       detachNestedBlock: () => {},
       removeTopLevelBlock: () => {},
       assignInScopeReference: () => false,
       getInScopeValues: () => [],
+      getBlocks: () => [],
       isNested: false,
     }
   }
@@ -123,7 +127,9 @@ export function useDragContext(): DragContextValue {
 }
 
 export function isBlockEditing(ctx: DragContextValue, blockId: string): boolean {
-  return ctx.editorStack.includes(blockId)
+  if (ctx.editorStack.includes(blockId)) return true
+  const targetId = ctx.getEditorTargetBlockId(blockId)
+  return targetId !== blockId && ctx.editorStack.includes(targetId)
 }
 
 export function slotTargetKey(target: SlotTarget): string {
@@ -141,6 +147,9 @@ export function slotTargetKey(target: SlotTarget): string {
   }
   if (target.kind === 'print-value') {
     return `print:${target.parentBlockId}`
+  }
+  if (target.kind === 'return-value') {
+    return `return:${target.parentBlockId}`
   }
   if (target.kind === 'if-condition') {
     return `if-cond:${target.parentBlockId}`

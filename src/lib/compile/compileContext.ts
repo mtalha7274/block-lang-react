@@ -1,9 +1,10 @@
-import type { BlockNode, ProgramDocument } from '../../types'
+import type { BlockNode, ProgramDocument, ValueType } from '../../types'
 
 export class CompileContext {
   readonly functions: Map<string, BlockNode>
   readonly doc: ProgramDocument
   inFunctionBody = false
+  currentFunctionReturnType: ValueType = 'void'
 
   constructor(doc: ProgramDocument) {
     this.doc = doc

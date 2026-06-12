@@ -28,6 +28,20 @@ export function findBlockInTree(
       const nested = findBlockInTree([block.data.value], blockId)
       if (nested) return nested
     }
+    if (block.kind === 'return' && block.data.value) {
+      if (block.data.value.id === blockId) return block.data.value
+      const nested = findBlockInTree([block.data.value], blockId)
+      if (nested) return nested
+    }
+    if (block.kind === 'function') {
+      if (block.data.signature?.id === blockId) return block.data.signature
+      if (block.data.signature) {
+        const inSig = findBlockInTree([block.data.signature], blockId)
+        if (inSig) return inSig
+      }
+      const found = findBlockInTree(block.data.body, blockId)
+      if (found) return found
+    }
     if (block.kind === 'functionCall') {
       for (const arg of block.data.arguments) {
         if (arg.value?.id === blockId) return arg.value
@@ -41,15 +55,6 @@ export function findBlockInTree(
       for (const v of block.data.variables) {
         if (v.id === blockId) return v
       }
-    }
-    if (block.kind === 'function') {
-      if (block.data.signature?.id === blockId) return block.data.signature
-      if (block.data.signature) {
-        const inSig = findBlockInTree([block.data.signature], blockId)
-        if (inSig) return inSig
-      }
-      const found = findBlockInTree(block.data.body, blockId)
-      if (found) return found
     }
     if (block.kind === 'if') {
       if (block.data.condition) {
@@ -134,6 +139,23 @@ export function updateBlockInTree(
         }
         return block
       case 'print':
+        if (block.data.value?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, value: updater(block.data.value) },
+          }
+        }
+        if (block.data.value) {
+          return {
+            ...block,
+            data: {
+              ...block.data,
+              value: updateBlockInTree([block.data.value], blockId, updater)[0],
+            },
+          }
+        }
+        return block
+      case 'return':
         if (block.data.value?.id === blockId) {
           return {
             ...block,
@@ -277,6 +299,17 @@ function mapBlockNode(
       }
       return mapped
     case 'print':
+      if (mapped.data.value) {
+        return {
+          ...mapped,
+          data: {
+            ...mapped.data,
+            value: mapBlockNode(mapped.data.value, mapper),
+          },
+        }
+      }
+      return mapped
+    case 'return':
       if (mapped.data.value) {
         return {
           ...mapped,
@@ -495,6 +528,17 @@ export function updatePrintValue(
   })
 }
 
+export function updateReturnValue(
+  blocks: BlockNode[],
+  returnId: string,
+  value: BlockNode | undefined,
+): BlockNode[] {
+  return updateBlockInTree(blocks, returnId, (block) => {
+    if (block.kind !== 'return') return block
+    return { ...block, data: { ...block.data, value } }
+  })
+}
+
 export function updateIfCondition(
   blocks: BlockNode[],
   ifId: string,
@@ -612,6 +656,38 @@ export function findBlockParent(
         if (nested) return nested
       }
     }
+    if (block.kind === 'return') {
+      if (block.data.value?.id === blockId) {
+        return {
+          parentBlockId: block.id,
+          target: { kind: 'return-value', parentBlockId: block.id },
+        }
+      }
+      if (block.data.value) {
+        const nested = findBlockParent([block.data.value], blockId)
+        if (nested) return nested
+      }
+    }
+    if (block.kind === 'function') {
+      if (block.data.signature?.id === blockId) {
+        return {
+          parentBlockId: block.id,
+          target: { kind: 'function-signature', parentBlockId: block.id },
+        }
+      }
+      if (block.data.body.some((s) => s.id === blockId)) {
+        return {
+          parentBlockId: block.id,
+          target: { kind: 'statement-body', parentBlockId: block.id, region: 'function' },
+        }
+      }
+      if (block.data.signature) {
+        const nested = findBlockParent([block.data.signature], blockId)
+        if (nested) return nested
+      }
+      const nested = findBlockParent(block.data.body, blockId)
+      if (nested) return nested
+    }
     if (block.kind === 'functionCall') {
       for (const arg of block.data.arguments) {
         if (arg.value?.id === blockId) {
@@ -637,26 +713,6 @@ export function findBlockParent(
           target: { kind: 'type-variable', parentBlockId: block.id },
         }
       }
-    }
-    if (block.kind === 'function') {
-      if (block.data.signature?.id === blockId) {
-        return {
-          parentBlockId: block.id,
-          target: { kind: 'function-signature', parentBlockId: block.id },
-        }
-      }
-      if (block.data.body.some((s) => s.id === blockId)) {
-        return {
-          parentBlockId: block.id,
-          target: { kind: 'statement-body', parentBlockId: block.id, region: 'function' },
-        }
-      }
-      if (block.data.signature) {
-        const nested = findBlockParent([block.data.signature], blockId)
-        if (nested) return nested
-      }
-      const nested = findBlockParent(block.data.body, blockId)
-      if (nested) return nested
     }
     if (block.kind === 'if') {
       if (block.data.condition?.id === blockId) {
@@ -874,6 +930,8 @@ export function detachBlockFromTree(blocks: BlockNode[], blockId: string): Block
       )
     case 'print-value':
       return updatePrintValue(blocks, parent.parentBlockId, undefined)
+    case 'return-value':
+      return updateReturnValue(blocks, parent.parentBlockId, undefined)
     case 'if-condition':
       return updateIfCondition(blocks, parent.parentBlockId, undefined)
     case 'call-arg':

@@ -29,6 +29,8 @@ export function getUsageInPortId(target: import('../../types').SlotTarget): stri
   switch (target.kind) {
     case 'print-value':
       return 'print-value-in'
+    case 'return-value':
+      return 'return-value-in'
     case 'if-condition':
       return 'if-condition-in'
     case 'call-arg':
