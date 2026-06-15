@@ -1,0 +1,29 @@
+.reference-drag-ghost {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--chip-color) 50%, var(--border));
+  background: color-mix(in srgb, var(--chip-color) 12%, var(--block-bg));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.reference-drag-ghost__type {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--chip-color);
+  font-family: var(--mono);
+}
+
+.reference-drag-ghost__label {
+  font-weight: 500;
+  color: var(--text);
+}

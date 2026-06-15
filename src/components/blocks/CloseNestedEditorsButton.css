@@ -1,0 +1,27 @@
+.close-nested-editors-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--block-bg);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.close-nested-editors-btn:hover {
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--accent) 8%, var(--block-bg));
+  color: var(--text-h);
+}
+
+.close-nested-editors-btn svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}

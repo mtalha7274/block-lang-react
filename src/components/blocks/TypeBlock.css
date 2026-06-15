@@ -1,0 +1,116 @@
+.type-block__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.type-block__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.type-block__name {
+  flex: 1;
+  min-width: 60px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--text-h);
+  background: var(--code-bg);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+}
+
+.type-block__name:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
+.type-block__remove {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text);
+  background: transparent;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.type-block__remove:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.type-block__add {
+  align-self: flex-start;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font);
+  color: var(--text-h);
+  background: var(--code-bg);
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.type-block__add:hover {
+  border-color: var(--accent-border);
+}
+
+.type-block__section-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  opacity: 0.65;
+  margin-bottom: 6px;
+}
+
+.type-block__dropped {
+  margin-bottom: 12px;
+}
+
+.type-block__var-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.type-block__var-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: var(--mono);
+  font-weight: 700;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.type-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.type-inline__label {
+  font-weight: 800;
+  color: var(--text-h);
+}
+
+.type-inline__summary {
+  font-family: var(--mono);
+  font-weight: 600;
+  opacity: 0.85;
+}

@@ -1,0 +1,51 @@
+.primitive-block__input {
+  min-width: 48px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--text-h);
+  background: var(--code-bg);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+}
+
+.primitive-block__input:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
+.primitive-block__toggle {
+  display: inline-flex;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.primitive-block__toggle-opt {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--text);
+  background: var(--code-bg);
+  border: none;
+  cursor: pointer;
+}
+
+.primitive-block__toggle-opt--on {
+  color: #fff;
+  background: var(--type-boolean);
+}
+
+.primitive-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.primitive-inline__val {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+}

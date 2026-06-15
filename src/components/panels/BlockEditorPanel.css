@@ -1,0 +1,8 @@
+.block-editor-panel {
+  padding: 8px 4px;
+  min-width: 260px;
+}
+
+.block-editor-panel .block-renderer {
+  width: fit-content;
+}

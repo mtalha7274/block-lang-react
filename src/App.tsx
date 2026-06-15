@@ -1,121 +1,434 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import {
+  AppShell,
+  Toolbar,
+  BlockPalette,
+  WorkspaceCanvas,
+  CanvasBlocksLayer,
+  canvasBlockStackId,
+  RightPanel,
+  OutputPanel,
+} from './components/layout'
+import { FloatingPanel } from './components/ui'
+import { BlockEditorPanel } from './components/panels'
+import { useEditorState, useBlockDrag, useEmulator, useStackZOrder } from './hooks'
+import { DragContext, type DragContextValue } from './components/canvas/DragContext'
+import { blockRegistry } from './constants'
+import { compileProgram } from './lib/compile'
+import { validateProgram } from './lib/validation/validateProgram'
+import { ReferenceDragGhost } from './components/blocks/ReferenceDragGhost'
+import { resolveBlockEditorTargetId } from './lib/program/callWire'
+import { findBlockInTree, getStatementLineNumber } from './lib/program/blockTree'
+import { collectDescendantBlockIds } from './lib/program/collectDescendantBlockIds'
+import { computeEditorPanelPosition } from './lib/workspace/editorPanelPlacement'
+import {
+  getInspectorDefaultX,
+  getPaletteDefaultPosition,
+  INSPECTOR_PANEL_WIDTH,
+  PALETTE_PANEL_WIDTH,
+} from './lib/workspace/panelDefaults'
+import type { BlockKind, PanelTab, SlotTarget } from './types'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [activePanelTab, setActivePanelTab] = useState<PanelTab>('typescript')
+  const [editorStack, setEditorStack] = useState<string[]>([])
+  const [centerMainTrigger, setCenterMainTrigger] = useState(1)
+  const [scrollOffset, setScrollOffset] = useState({ left: 0, top: 0 })
+  const surfaceRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const workspaceContainerRef = useRef<HTMLDivElement>(null)
+
+  const panelZ = useStackZOrder(20)
+
+  const {
+    program,
+    panelPositions,
+    moveBlock,
+    movePanel,
+    resetProgram,
+    updateBlockType,
+    updateBlockValue,
+    updateVariableName,
+    updateFunctionReturnType,
+    updateFunctionName,
+    addTypeParamRow,
+    removeTypeParamRow,
+    updateTypeParamRow,
+    updateFunctionCallName,
+    updateExpressionOperator,
+    updateExpressionResultName,
+    updateBlockLayout,
+    attachBlockIdToSlot,
+    attachNewBlockToSlot,
+    assignInScopeReference,
+    getInScopeValues,
+    detachNestedBlock,
+    removeTopLevelBlock,
+  } = useEditorState()
+
+  const emulator = useEmulator()
+
+  const compileResult = useMemo(() => compileProgram(program), [program])
+  const validationErrors = useMemo(() => validateProgram(program), [program])
+  const canEmulate =
+    validationErrors.length === 0 && compileResult.errors.length === 0
+
+  const findBlock = useCallback(
+    (id: string) => findBlockInTree(program.blocks, id),
+    [program.blocks],
+  )
+
+  useEffect(() => {
+    setEditorStack((prev) =>
+      prev.filter((id) => findBlockInTree(program.blocks, id) !== undefined),
+    )
+  }, [program])
+
+  const raiseCanvasBlock = useCallback(
+    (blockId: string) => {
+      panelZ.raise(canvasBlockStackId(blockId))
+    },
+    [panelZ],
+  )
+
+  const getCanvasBlockZ = useCallback(
+    (blockId: string) => panelZ.getZ(canvasBlockStackId(blockId), 2),
+    [panelZ],
+  )
+
+  const raisePanel = useCallback(
+    (panelId: string) => {
+      panelZ.raise(panelId)
+    },
+    [panelZ],
+  )
+
+  const getEditorTargetBlockId = useCallback(
+    (blockId: string) => {
+      const block = findBlock(blockId)
+      if (!block) return blockId
+      return resolveBlockEditorTargetId(block, program.blocks)
+    },
+    [findBlock, program.blocks],
+  )
+
+  const openBlockEditor = useCallback(
+    (blockId: string, anchorEl?: HTMLElement | null) => {
+      const editorBlockId = getEditorTargetBlockId(blockId)
+      const panelId = `blockEditor-${editorBlockId}`
+
+      setEditorStack((prev) => {
+        if (prev.includes(editorBlockId)) return prev
+
+        if (
+          anchorEl &&
+          workspaceContainerRef.current &&
+          !panelPositions[panelId]
+        ) {
+          const pos = computeEditorPanelPosition(
+            anchorEl,
+            workspaceContainerRef.current,
+            280,
+          )
+          movePanel(panelId, pos.x, pos.y)
+        }
+
+        return [...prev, editorBlockId]
+      })
+
+      raisePanel(panelId)
+    },
+    [getEditorTargetBlockId, movePanel, panelPositions, raisePanel],
+  )
+
+  const attachNewBlockFromPalette = useCallback(
+    (kind: BlockKind, target: SlotTarget) => {
+      const result = attachNewBlockToSlot(kind, target)
+      if (result.createdFunctionId) {
+        openBlockEditor(result.createdFunctionId)
+      }
+      return result
+    },
+    [attachNewBlockToSlot, openBlockEditor],
+  )
+
+  const drag = useBlockDrag({
+    onMoveBlock: moveBlock,
+    onAttachBlockId: attachBlockIdToSlot,
+    onAttachNewBlock: attachNewBlockFromPalette,
+    onAssignReference: assignInScopeReference,
+    onRaiseCanvasBlock: raiseCanvasBlock,
+    surfaceRef,
+    scrollRef,
+    findBlock,
+    getBlocks: () => program.blocks,
+  })
+
+  const closeBlockEditor = useCallback((blockId: string) => {
+    setEditorStack((prev) => prev.filter((id) => id !== blockId))
+  }, [])
+
+  const closeNestedEditors = useCallback(
+    (containerBlockId: string) => {
+      const container = findBlockInTree(program.blocks, containerBlockId)
+      if (!container) return
+      const descendantIds = new Set(collectDescendantBlockIds(container))
+      setEditorStack((prev) => prev.filter((id) => !descendantIds.has(id)))
+    },
+    [program.blocks],
+  )
+
+  const handleDetachNestedBlock = useCallback(
+    (blockId: string) => {
+      detachNestedBlock(blockId)
+      setEditorStack((prev) => prev.filter((id) => id !== blockId))
+    },
+    [detachNestedBlock],
+  )
+
+  const handleRemoveTopLevelBlock = useCallback(
+    (blockId: string) => {
+      removeTopLevelBlock(blockId)
+      setEditorStack((prev) => prev.filter((id) => id !== blockId))
+    },
+    [removeTopLevelBlock],
+  )
+
+  const dragContext = useMemo<DragContextValue>(
+    () => ({
+      draggingBlockId: drag.draggingBlockId,
+      draggingPaletteKind: drag.draggingPaletteKind,
+      draggingReferenceSourceId: drag.draggingReferenceSourceId,
+      hoverSlot: drag.hoverSlot,
+      slotValidity: drag.slotValidity,
+      rejectBlockId: drag.rejectBlockId,
+      rejectMessage: drag.rejectMessage,
+      rejectSlotTarget: drag.rejectSlotTarget,
+      editorStack,
+      hoverPreviewSize: drag.hoverPreviewSize,
+      referenceDragPosition: drag.referenceDragPosition,
+      updateBlockType,
+      updateBlockValue,
+      updateVariableName,
+      updateFunctionReturnType,
+      updateFunctionName,
+      addTypeParamRow,
+      removeTypeParamRow,
+      updateTypeParamRow,
+      updateFunctionCallName,
+      updateExpressionOperator,
+      updateExpressionResultName,
+      updateBlockLayout,
+      onSlotPointerEnter: drag.onSlotPointerEnter,
+      onSlotPointerLeave: drag.onSlotPointerLeave,
+      onSlotPointerUp: drag.onSlotPointerUp,
+      onBlockDragStart: () => {},
+      onBlockDragEnd: () => {},
+      onReferenceDragStart: drag.onReferenceDragStart,
+      onReferenceDragEnd: drag.onReferenceDragEnd,
+      onNestedChipPointerDown: drag.handleNestedChipPointerDown,
+      handleSlotDragOver: drag.handleSlotDragOver,
+      handleSlotDrop: drag.handleSlotDrop,
+      openBlockEditor,
+      getEditorTargetBlockId,
+      closeBlockEditor,
+      closeNestedEditors,
+      detachNestedBlock: handleDetachNestedBlock,
+      removeTopLevelBlock: handleRemoveTopLevelBlock,
+      assignInScopeReference,
+      getInScopeValues,
+      getBlocks: () => program.blocks,
+      isNested: false,
+    }),
+    [
+      drag,
+      editorStack,
+      updateBlockType,
+      updateBlockValue,
+      updateVariableName,
+      updateFunctionReturnType,
+      updateFunctionName,
+      addTypeParamRow,
+      removeTypeParamRow,
+      updateTypeParamRow,
+      updateFunctionCallName,
+      updateExpressionOperator,
+      updateExpressionResultName,
+      updateBlockLayout,
+      openBlockEditor,
+      getEditorTargetBlockId,
+      closeBlockEditor,
+      closeNestedEditors,
+      handleDetachNestedBlock,
+      handleRemoveTopLevelBlock,
+      assignInScopeReference,
+      getInScopeValues,
+      program.blocks,
+    ],
+  )
+
+  const handleReset = () => {
+    emulator.reset()
+    setActivePanelTab('typescript')
+    setEditorStack([])
+    resetProgram()
+    setCenterMainTrigger((n) => n + 1)
+  }
+
+  const handleCenterMain = useCallback(
+    (x: number, y: number) => {
+      moveBlock('main', x, y)
+    },
+    [moveBlock],
+  )
+
+  const isEmulating = emulator.isActive
+
+  const handleEmulateToggle = () => {
+    if (emulator.isActive) {
+      emulator.stop()
+    } else {
+      emulator.run(program)
+      setActivePanelTab('variables')
+    }
+  }
+
+  const inspectorX = panelPositions.inspector?.x ?? getInspectorDefaultX()
+
+  const referenceDragBlock =
+    drag.draggingReferenceSourceId && drag.referenceDragPosition
+      ? findBlock(drag.draggingReferenceSourceId)
+      : null
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <AppShell
+      toolbar={
+        <Toolbar
+          isEmulating={isEmulating}
+          emulateStatus={emulator.status}
+          emulateError={emulator.status === 'error'}
+          emulateDisabled={!canEmulate}
+          onEmulateToggle={handleEmulateToggle}
+          onReset={handleReset}
+        />
+      }
+      outputPanel={
+        <OutputPanel
+          lines={emulator.isActive ? emulator.outputLines : []}
+          visible
+        />
+      }
+      workspace={
+        <div ref={workspaceContainerRef} className="app-workspace-root">
+          <DragContext.Provider value={dragContext}>
+            {referenceDragBlock && drag.referenceDragPosition && (
+              <ReferenceDragGhost
+                block={referenceDragBlock}
+                x={drag.referenceDragPosition.x}
+                y={drag.referenceDragPosition.y}
+              />
+            )}
+            <WorkspaceCanvas
+              surfaceRef={surfaceRef}
+              scrollRef={scrollRef}
+              onScrollOffsetChange={setScrollOffset}
+            />
 
-      <div className="ticks"></div>
+            <CanvasBlocksLayer
+              program={program}
+              activeBlockId={emulator.highlight?.activeBlockId}
+              scrollOffset={scrollOffset}
+              scrollRef={scrollRef}
+              centerMainTrigger={centerMainTrigger}
+              getBlockZ={getCanvasBlockZ}
+              onBlockPointerDown={drag.handleBlockPointerDown}
+              onRaiseBlock={raiseCanvasBlock}
+              onCenterMain={handleCenterMain}
+            />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+            <FloatingPanel
+              id="palette"
+              title="Blocks"
+              dock="top-left"
+              position={panelPositions.palette ?? getPaletteDefaultPosition()}
+              onMove={movePanel}
+              minWidth={PALETTE_PANEL_WIDTH}
+              zIndex={panelZ.getZ('palette', 20)}
+              workspaceContainerRef={workspaceContainerRef}
+              onFocus={() => raisePanel('palette')}
+            >
+              <BlockPalette
+                onDragStart={drag.handlePaletteDragStart}
+                onDragEnd={drag.handlePaletteDragEnd}
+              />
+            </FloatingPanel>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+            {editorStack.map((blockId) => {
+              const block = findBlock(blockId)
+              if (!block) return null
+              const panelId = `blockEditor-${blockId}`
+              const saved = panelPositions[panelId]
+              const title =
+                block.kind === 'function'
+                  ? block.data.name
+                  : (blockRegistry[block.kind]?.label ?? 'Block Editor')
+              const lineNumber = getStatementLineNumber(program.blocks, blockId)
+              return (
+                <FloatingPanel
+                  key={blockId}
+                  id={panelId}
+                  title={title}
+                  subtitle={lineNumber ? `Line ${lineNumber}` : undefined}
+                  position={{
+                    x: saved?.x ?? 80,
+                    y: saved?.y ?? 80,
+                  }}
+                  onMove={movePanel}
+                  minWidth={280}
+                  zIndex={panelZ.getZ(panelId, 25)}
+                  workspaceContainerRef={workspaceContainerRef}
+                  onFocus={() => raisePanel(panelId)}
+                  onHeaderClose={() => closeBlockEditor(blockId)}
+                  onHeaderRemove={() => handleDetachNestedBlock(blockId)}
+                >
+                  <BlockEditorPanel
+                    block={block}
+                    activeBlockId={emulator.highlight?.activeBlockId}
+                  />
+                </FloatingPanel>
+              )
+            })}
+
+            <FloatingPanel
+              id="inspector"
+              title="Inspector"
+              dock="top-right"
+              position={{
+                x: inspectorX,
+                y: panelPositions.inspector?.y ?? 0,
+              }}
+              onMove={movePanel}
+              minWidth={INSPECTOR_PANEL_WIDTH}
+              zIndex={panelZ.getZ('inspector', 20)}
+              workspaceContainerRef={workspaceContainerRef}
+              onFocus={() => raisePanel('inspector')}
+            >
+              <RightPanel
+                activeTab={activePanelTab}
+                onTabChange={setActivePanelTab}
+                typeScriptCode={compileResult.code}
+                compileErrors={compileResult.errors}
+                variables={emulator.isActive ? emulator.variables : []}
+                callStack={emulator.isActive ? emulator.callStack : []}
+                isEmulating={isEmulating}
+                errorMessage={emulator.errorMessage}
+              />
+            </FloatingPanel>
+          </DragContext.Provider>
+        </div>
+      }
+    />
   )
 }
 

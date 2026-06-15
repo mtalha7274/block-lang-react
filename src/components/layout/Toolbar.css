@@ -1,0 +1,76 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  padding: 0 20px;
+  background: var(--block-bg);
+}
+
+.toolbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toolbar__logo {
+  font-size: 22px;
+  color: var(--accent);
+}
+
+.toolbar__title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.toolbar__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toolbar__emulate {
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  padding: 8px 18px !important;
+}
+
+.toolbar__running {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.toolbar__running-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.toolbar__running-dot--error {
+  background: var(--block-error-border);
+  animation: none;
+}
+
+.toolbar__running-dot--done {
+  background: var(--type-string);
+  animation: none;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}

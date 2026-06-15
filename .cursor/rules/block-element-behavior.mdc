@@ -1,0 +1,104 @@
+---
+description: Block layout, nesting, drag-drop, slot rules — quick AI reference
+alwaysApply: true
+---
+
+# Block Element Behavior
+
+See also [`BLOCK_RULES.md`](BLOCK_RULES.md) for foundational product rules.
+
+## Block model
+
+- Every individual element — or any element that contains other elements — is a **block**.
+- Everything is made of **fundamental blocks** (primitives, variables, expressions, etc.) composed into larger blocks.
+- **Function body** (Main Function / Function): tapping a **minimized chip** opens its **Block Editor** ([`BlockEditorPanel.tsx`](src/components/panels/BlockEditorPanel.tsx)).
+- **Block editors** show the block's **full UI**; nested children stay **minimized chips**; tapping a chip opens **another** editor on the stack ([`editorStack`](src/App.tsx)). This repeats recursively.
+
+## Core rules
+
+- Start: **Main Function only** on canvas → [`emptyProgram.ts`](src/constants/emptyProgram.ts). Main cannot be deleted/nested.
+- **Palette drops are slot-only.** Drag from the Blocks panel into a valid slot inside Main or an open block editor. Dropping on empty canvas does nothing.
+- **Function** is not in the palette. Dropping a **Function Call** into a statement body auto-creates a linked Function definition (no canvas card; edit via block editor). Clicking a Function Call **mini chip** opens the linked **Function** block editor, not the call editor.
+- Every slot needs `slotTarget` on [`BlockSlot.tsx`](src/components/ui/BlockSlot.tsx) or drag-drop is dead.
+- Invalid drop → red dashed border + message. Never silent reject. Primitives auto-coerce to slot type on all typed value slot attaches.
+
+## Blocks & nesting
+
+**Tree:** Program = top-level canvas blocks ([`placements`](src/types/program.ts)) + nested children in parent `data` (body arrays, value slots, operands) — CRUD in [`blockTree.ts`](src/lib/program/blockTree.ts).
+
+| Context | Renders as | Where |
+|---------|------------|-------|
+| Top-level canvas | **Main only** — full block + drag handle | [`CanvasBlocksLayer.tsx`](src/components/layout/CanvasBlocksLayer.tsx) |
+| Editor panel root | Full block UI | [`BlockEditorPanel.tsx`](src/components/panels/BlockEditorPanel.tsx) → [`BlockRenderer`](src/components/canvas/BlockRenderer.tsx) |
+| Any nested child (body, slot, editor) | **Minimized chip** (`nestedView: true`) | [`StatementBody.tsx`](src/components/blocks/StatementBody.tsx), slot blocks, [`BlockRenderer.tsx`](src/components/canvas/BlockRenderer.tsx) |
+| `valueRef` | **ValueRefChip** (not minimized block) | [`BlockRenderer.tsx`](src/components/canvas/BlockRenderer.tsx) |
+
+**`BlockRenderer` rule:** `nestedView && kind !== 'main'` → [`MinimizedBlockChip`](src/components/blocks/MinimizedBlockChip.tsx). Otherwise → full block component. Nested children default to `nestedView: true` in `renderChild`.
+
+**Editor stack:** Click chip → `openBlockEditor` → [`BlockEditorPanel`](src/components/panels/BlockEditorPanel.tsx) (full UI for root only; nested children stay chips). Multiple editors stack ([`editorStack`](src/App.tsx)). Chip **×** or panel remove → [`detachNestedBlock`](src/hooks/useEditorState.ts) (discards nested block).
+
+**Never** render full nested block UI inline inside a parent — chips only (except the single root block in an open editor).
+
+## Where to drop (workflow)
+
+| Step | Action | Block / slot |
+|------|--------|--------------|
+| 1 | Statement | Variable → `statement-body` |
+| 2 | Value | Constant → Variable `variable-value` (not body) |
+| 3 | Expression | Expression → body → editor → `expression-operand` left/right |
+| 4 | Loops | For/While → body → editor → `for-init` / `for-condition` / `for-increment` / `while-condition` |
+
+Containers grow vertically when a valid child is placed.
+
+## Typed value matching
+
+Value-producing blocks: **primitive**, **variable**, **expression**, **functionCall**, **valueRef**. Non-void function calls only; void calls are statements, not values.
+
+- Per-kind semantics: [`blockContract.ts`](src/lib/program/blockContract.ts) — `getBlockValueType`, `canUseAsStatement`, `canCreateValueReference`, `getMiniBlockView`.
+- Slot attach rules: [`slotRules.ts`](src/lib/validation/slotRules.ts) — `getSlotRequirement`, `canAttachBlockToSlot`, `canAttachPaletteKindToSlot`, `normalizeBlockForSlot`.
+- Legacy wrappers: [`typeChecker.ts`](src/lib/validation/typeChecker.ts), scope helpers in [`scope.ts`](src/lib/program/scope.ts).
+- Typed slots accept a block when `getBlockValueType(block) === expected` (via `canAttachBlockToSlot` / `canValueSlotAcceptBlock`). **Primitives** always fit typed value slots and coerce on attach (`normalizeBlockForSlot`).
+- **Block drag** onto a value slot → nest/move the block (detach from old location via `attachBlockIdToSlot`).
+- **Reference grip** / scope picker → `valueRef` only; source stays on its line (`assignReferenceToSlot`).
+
+## Slot acceptance → [`slotRules.ts`](src/lib/validation/slotRules.ts)
+
+| Slot | Accepts |
+|------|---------|
+| `statement-body` | variable, expression, print, functionCall, if, for, while — **return** only inside functions; **not** primitive |
+| `variable-value` | primitive, variable, expression, functionCall, valueRef — type must match `valueType` (primitives coerce) |
+| `print-value` | primitive, variable, expression, functionCall, valueRef (any value type) |
+| `return-value` | primitive, variable, expression, valueRef — type must match enclosing function `returnType`; unavailable for `void` |
+| `if-condition` | boolean-valued blocks/refs |
+| `expression-operand` | value nestable kinds — match operand type (`getExpressionOperandType`; comparisons use **number** operands) |
+| `for-init` / `for-increment` | number-valued blocks/refs (init: variable only; increment: expression only) |
+| `for-condition` / `while-condition` | boolean-valued blocks/refs |
+| `call-arg` | primitive, variable, expression, functionCall, valueRef — type must match arg |
+| `type-variable` | variable only |
+| `function-signature` | type block only |
+
+## In-scope refs
+
+- Link keeps source on its line; consumer stores `valueRef`. **Use existing…** on empty slots (`scopeConsumerId`).
+- Drag **ReferencePill** / link grip → value slot (not block drag). Usage edges in body ([`ConnectionLayer.tsx`](src/components/canvas/ConnectionLayer.tsx)). Source removal → error on ref.
+
+## File map
+
+| Task | Go to |
+|------|-------|
+| Block semantics (types, statements, mini view, auto-create function) | [`blockContract.ts`](src/lib/program/blockContract.ts), [`ensureFunctionForCall.ts`](src/lib/program/ensureFunctionForCall.ts) |
+| Slot validation + attach | [`slotRules.ts`](src/lib/validation/slotRules.ts) |
+| Slot UI / `data-slot-*` | [`BlockSlot.tsx`](src/components/ui/BlockSlot.tsx), [`src/components/blocks/`](src/components/blocks/) |
+| `SlotTarget` type | [`program.ts`](src/types/program.ts) |
+| Hit test | [`slotTargetFromElement.ts`](src/lib/drag/slotTargetFromElement.ts) |
+| Hover / drop | [`useBlockDrag.ts`](src/hooks/useBlockDrag.ts), [`DragContext.tsx`](src/components/canvas/DragContext.tsx) |
+| Attach / detach / refs | [`useEditorState.ts`](src/hooks/useEditorState.ts) |
+| Tree CRUD | [`blockTree.ts`](src/lib/program/blockTree.ts) |
+| Legacy type helpers | [`typeChecker.ts`](src/lib/validation/typeChecker.ts) |
+| Scope + valueRef | [`scope.ts`](src/lib/program/scope.ts), [`valueRef.ts`](src/lib/program/valueRef.ts) |
+| Chips / render / `nestedView` | [`BlockRenderer.tsx`](src/components/canvas/BlockRenderer.tsx), [`MinimizedBlockChip.tsx`](src/components/blocks/MinimizedBlockChip.tsx) |
+| Editor stack | [`App.tsx`](src/App.tsx) `editorStack`, [`BlockEditorPanel.tsx`](src/components/panels/BlockEditorPanel.tsx) |
+
+## New slot checklist
+
+`program.ts` type → `BlockSlot` `slotTarget` → `slotTargetFromElement` + `slotTargetKey` → `slotRules` (`getSlotRequirement`, `canAttachBlockToSlot`) → `blockTree` (update/findParent/detach) → `useBlockDrag` → `useEditorState` (attach + ref) → `valueRef.getUsageInPortId` → update slot table above.

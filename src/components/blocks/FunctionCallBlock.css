@@ -1,0 +1,82 @@
+.function-call-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.function-call-block--nested {
+  width: auto;
+  min-width: min-content;
+  max-width: none;
+}
+
+.function-call-block__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.function-call-block__name {
+  min-width: 80px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--text-h);
+  background: var(--code-bg);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+}
+
+.function-call-block__name:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
+.function-call-block__arrow {
+  font-family: var(--mono);
+  font-weight: 800;
+  color: var(--text-h);
+}
+
+.function-call-block__args {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.function-call-block__arg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: min-content;
+}
+
+.function-call-block__arg-label {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--text);
+  opacity: 0.75;
+  flex-shrink: 0;
+  min-width: 24px;
+}
+
+.function-call-block__arg .slot {
+  flex: 1 1 auto;
+  min-width: 80px;
+}
+
+.function-call-block--nested .function-call-block__arg .slot {
+  flex: 0 1 auto;
+  min-width: min-content;
+}
+
+.call-inline {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+}

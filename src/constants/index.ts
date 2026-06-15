@@ -1,0 +1,8 @@
+export { blockRegistry, typeColorMap, categoryStripeMap } from './blockRegistry'
+export type { BlockRegistryEntry } from './blockRegistry'
+export { operators } from './operators'
+export type { OperatorEntry } from './operators'
+export { learningStages } from './learningStages'
+export type { LearningStage } from './learningStages'
+export { emptyProgram, emptyTypeScript, emptyVariables, emptyCallStack } from './emptyProgram'
+export { createBlockFromKind } from './blockDefaults'

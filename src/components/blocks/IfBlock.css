@@ -1,0 +1,32 @@
+.if-block__branches {
+  display: grid;
+  grid-template-columns: minmax(min-content, 1fr) minmax(min-content, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.if-block__branch {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--code-bg) 50%, transparent);
+  min-width: min-content;
+}
+
+.if-block__branch--true {
+  border-left: 3px solid var(--type-string);
+}
+
+.if-block__branch--false {
+  border-left: 3px solid var(--type-number);
+}
+
+.if-block__branch-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+

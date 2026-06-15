@@ -1,0 +1,38 @@
+.connection-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.connection-layer__svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.edge {
+  stroke-width: 2;
+  transition: stroke 0.2s;
+}
+
+.edge--valid {
+  stroke: var(--connection-line);
+}
+
+.edge--valid.edge--number {
+  stroke: var(--type-number);
+}
+
+.edge--valid.edge--string {
+  stroke: var(--type-string);
+}
+
+.edge--valid.edge--boolean {
+  stroke: var(--type-boolean);
+}
+
+.edge--invalid {
+  stroke: var(--connection-invalid);
+  stroke-dasharray: 6 4;
+}

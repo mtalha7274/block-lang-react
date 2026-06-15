@@ -1,0 +1,67 @@
+.value-ref-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px 0 0;
+  border: 2px solid var(--block-border);
+  border-radius: 8px;
+  background: var(--block-bg);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  position: relative;
+}
+
+.value-ref-chip::before {
+  content: '';
+  width: 4px;
+  align-self: stretch;
+  flex-shrink: 0;
+  background: var(--chip-color);
+  border-radius: 6px 0 0 6px;
+}
+
+.value-ref-chip--error {
+  border-color: var(--block-error-border);
+  background: var(--block-error-bg);
+}
+
+.value-ref-chip__type {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--chip-color);
+}
+
+.value-ref-chip__label {
+  color: var(--text-h);
+}
+
+.value-ref-chip__ref {
+  font-size: 10px;
+  opacity: 0.55;
+}
+
+.value-ref-chip__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  opacity: 0.5;
+  cursor: pointer;
+}
+
+.value-ref-chip__remove:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--block-error-border) 15%, transparent);
+  color: var(--block-error-border);
+}

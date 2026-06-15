@@ -1,0 +1,62 @@
+.scope-picker {
+  position: relative;
+  margin-top: 4px;
+}
+
+.scope-picker__toggle {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.scope-picker__toggle:hover {
+  color: var(--accent-border);
+}
+
+.scope-picker__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 160px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--block-bg);
+  box-shadow: var(--block-shadow);
+}
+
+.scope-picker__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-align: left;
+}
+
+.scope-picker__item:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.scope-picker__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
