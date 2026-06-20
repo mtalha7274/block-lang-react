@@ -448,7 +448,7 @@ export function useBlockDrag({
       blockId: string,
       e: React.PointerEvent,
       anchorEl: HTMLElement,
-      openEditor: (anchor: HTMLElement) => void,
+      _openEditor: (_anchor: HTMLElement) => void,
     ) => {
       e.preventDefault()
       e.stopPropagation()
@@ -508,9 +508,7 @@ export function useBlockDrag({
         const dropTarget = slotTargetFromPoint(ev.clientX, ev.clientY, blockId)
         const block = findBlock(blockId)
 
-        if (!didDrag) {
-          openEditor(anchorEl)
-        } else if (dropTarget && block) {
+        if (didDrag && dropTarget && block) {
           const valid = evaluateSlotValidity(dropTarget, block, null, findBlock, getBlocks)
           if (valid) {
             const ok = onAttachBlockId(blockId, dropTarget)

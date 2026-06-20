@@ -3,6 +3,7 @@ import type { BlockNode } from '../../types'
 import { createBlockFromKind } from '../../constants/blockDefaults'
 import {
   getInScopeValuesForConsumer,
+  resolveInScopeReferenceSource,
   shouldUseInScopeReference,
 } from './scope'
 
@@ -19,14 +20,24 @@ describe('scope', () => {
     expect(inScope.some((v) => v.blockId === variable.id && v.label === 'count')).toBe(true)
   })
 
-  it('prefers in-scope references when attaching earlier expressions to if conditions', () => {
+  it('prefers in-scope variable when linking a nested expression to if conditions', () => {
     const main = createBlockFromKind('main') as Extract<BlockNode, { kind: 'main' }>
     const flagExpr = createBlockFromKind('expression') as Extract<BlockNode, { kind: 'expression' }>
-    flagExpr.data.resultName = 'flag'
     flagExpr.data.resultType = 'boolean'
+    const flagVar = createBlockFromKind('variable') as Extract<BlockNode, { kind: 'variable' }>
+    flagVar.data.name = 'flag'
+    flagVar.data.valueType = 'boolean'
+    flagVar.data.value = flagExpr
     const ifBlock = createBlockFromKind('if')
-    main.data.body = [flagExpr, ifBlock]
+    main.data.body = [flagVar, ifBlock]
     const blocks = [main]
+
+    expect(
+      resolveInScopeReferenceSource(blocks, flagExpr.id, {
+        kind: 'if-condition',
+        parentBlockId: ifBlock.id,
+      }),
+    ).toBe(flagVar.id)
 
     expect(
       shouldUseInScopeReference(blocks, flagExpr.id, {
@@ -34,26 +45,23 @@ describe('scope', () => {
         parentBlockId: ifBlock.id,
       }),
     ).toBe(true)
-
-    main.data.body = [ifBlock, flagExpr]
-    expect(
-      shouldUseInScopeReference(blocks, flagExpr.id, {
-        kind: 'if-condition',
-        parentBlockId: ifBlock.id,
-      }),
-    ).toBe(false)
   })
 
-  it('exposes expression result names to later if blocks in main', () => {
+  it('exposes variable names to later if blocks in main', () => {
     const main = createBlockFromKind('main') as Extract<BlockNode, { kind: 'main' }>
-    const flagExpr = createBlockFromKind('expression') as Extract<BlockNode, { kind: 'expression' }>
-    flagExpr.data.resultName = 'flag'
-    flagExpr.data.resultType = 'boolean'
+    const flagVar = createBlockFromKind('variable') as Extract<BlockNode, { kind: 'variable' }>
+    flagVar.data.name = 'flag'
+    flagVar.data.valueType = 'boolean'
+    flagVar.data.value = createBlockFromKind('primitive')
+    if (flagVar.data.value.kind === 'primitive') {
+      flagVar.data.value.data.valueType = 'boolean'
+      flagVar.data.value.data.value = true
+    }
     const ifBlock = createBlockFromKind('if')
-    main.data.body = [flagExpr, ifBlock]
+    main.data.body = [flagVar, ifBlock]
     const blocks = [main]
 
     const inScope = getInScopeValuesForConsumer(blocks, ifBlock.id)
-    expect(inScope.some((v) => v.blockId === flagExpr.id && v.label.startsWith('flag'))).toBe(true)
+    expect(inScope.some((v) => v.blockId === flagVar.id && v.label.startsWith('flag'))).toBe(true)
   })
 })

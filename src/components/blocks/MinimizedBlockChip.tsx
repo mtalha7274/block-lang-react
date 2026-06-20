@@ -1,7 +1,10 @@
+import { useRef } from 'react'
 import type { BlockNode, ValueType } from '../../types'
 import { getMiniBlockView } from '../../lib/program/blockContract'
 import { getLabelFromSource, isValueSourceBlock } from '../../lib/program/scope'
 import './MinimizedBlockChip.css'
+
+const TAP_MOVE_THRESHOLD_PX = 6
 
 interface MinimizedBlockChipProps {
   block: BlockNode
@@ -44,6 +47,15 @@ export function MinimizedBlockChip({
   const typeLabel = chipTypeLabel(block)
   const color = chipColor(block)
   const showReferenceGrip = isValueSourceBlock(block) && !!onReferenceDragStart
+  const gestureRef = useRef({ startX: 0, startY: 0 })
+  const openedFromPointerRef = useRef(false)
+  const supportsChipDrag = block.kind !== 'primitive' && !!onChipPointerDown
+
+  const openFromAnchor = (anchor: HTMLElement, e: React.PointerEvent | React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onOpenEditor(anchor)
+  }
 
   return (
     <div
@@ -72,14 +84,54 @@ export function MinimizedBlockChip({
             return
           }
           const anchor = e.currentTarget.closest('[data-block-id]') as HTMLElement
-          if (anchor && onChipPointerDown) {
-            onChipPointerDown(e, anchor)
+          if (!anchor) return
+
+          gestureRef.current = { startX: e.clientX, startY: e.clientY }
+
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId)
+          } catch {
+            // Pointer capture is best-effort for reliable tap detection.
+          }
+
+          if (supportsChipDrag) {
+            onChipPointerDown!(e, anchor)
+          }
+        }}
+        onPointerUp={(e) => {
+          if ((e.target as HTMLElement).closest('.minimized-chip__link-grip, .minimized-chip__remove')) {
+            return
+          }
+          const anchor = e.currentTarget.closest('[data-block-id]') as HTMLElement
+          if (!anchor) return
+
+          const { startX, startY } = gestureRef.current
+          const dx = e.clientX - startX
+          const dy = e.clientY - startY
+          const isTap = Math.abs(dx) < TAP_MOVE_THRESHOLD_PX && Math.abs(dy) < TAP_MOVE_THRESHOLD_PX
+
+          try {
+            e.currentTarget.releasePointerCapture(e.pointerId)
+          } catch {
+            // Ignore if capture was not set.
+          }
+
+          if (isTap) {
+            openedFromPointerRef.current = true
+            openFromAnchor(anchor, e)
           }
         }}
         onClick={(e) => {
-          if (onChipPointerDown) return
+          if (openedFromPointerRef.current) {
+            openedFromPointerRef.current = false
+            return
+          }
+          if ((e.target as HTMLElement).closest('.minimized-chip__link-grip, .minimized-chip__remove')) {
+            return
+          }
           const anchor = e.currentTarget.closest('[data-block-id]') as HTMLElement
-          if (anchor) onOpenEditor(anchor)
+          if (!anchor) return
+          openFromAnchor(anchor, e)
         }}
       >
         {typeLabel && (

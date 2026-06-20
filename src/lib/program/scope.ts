@@ -130,9 +130,36 @@ export function shouldUseInScopeReference(
 ): boolean {
   if (!isConsumerValueSlot(target)) return false
 
-  const source = findBlockInTree(blocks, sourceBlockId)
+  const resolvedId = resolveInScopeReferenceSource(blocks, sourceBlockId, target)
+  const source = findBlockInTree(blocks, resolvedId)
   if (!source || !isValueSourceBlock(source)) return false
 
   const inScope = getInScopeValuesForConsumer(blocks, target.parentBlockId)
-  return inScope.some((value) => value.blockId === sourceBlockId)
+  return inScope.some((value) => value.blockId === resolvedId)
+}
+
+/**
+ * When linking to a value slot, prefer the in-scope Variable that holds an expression
+ * instead of the nested expression block itself.
+ */
+export function resolveInScopeReferenceSource(
+  blocks: BlockNode[],
+  sourceBlockId: string,
+  target: import('../../types').SlotTarget,
+): string {
+  const inScope = getInScopeValuesForConsumer(blocks, target.parentBlockId)
+  if (inScope.some((value) => value.blockId === sourceBlockId)) {
+    return sourceBlockId
+  }
+
+  const source = findBlockInTree(blocks, sourceBlockId)
+  if (source?.kind !== 'expression') return sourceBlockId
+
+  const variableHost = inScope.find((value) => {
+    if (value.kind !== 'variable') return false
+    const variable = findBlockInTree(blocks, value.blockId)
+    return variable?.kind === 'variable' && variable.data.value?.id === sourceBlockId
+  })
+
+  return variableHost?.blockId ?? sourceBlockId
 }

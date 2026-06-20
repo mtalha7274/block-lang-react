@@ -52,6 +52,11 @@ describe('blockContract', () => {
     expect(canUseAsStatement(voidCall)).toBe(true)
   })
 
+  it('does not allow expressions as standalone statements', () => {
+    const expression = createBlockFromKind('expression')
+    expect(canUseAsStatement(expression)).toBe(false)
+  })
+
   it('shows valueRef condition label in if mini view', () => {
     const ifBlock: BlockNode = {
       ...(createBlockFromKind('if') as Extract<BlockNode, { kind: 'if' }>),

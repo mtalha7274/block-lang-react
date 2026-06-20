@@ -176,6 +176,18 @@ describe('slotRules', () => {
     expect(canAttachBlockToSlot(target, primitive, findBlock, {}, () => blocks)).toBe(false)
   })
 
+  it('rejects expression palette kind in statement-body slots', () => {
+    const main = createBlockFromKind('main')
+    const target: SlotTarget = {
+      kind: 'statement-body',
+      parentBlockId: main.id,
+      region: 'main',
+    }
+    const findBlock = (id: string) => (id === main.id ? main : undefined)
+
+    expect(canAttachPaletteKindToSlot(target, 'expression', findBlock)).toBe(false)
+  })
+
   it('accepts return statements only inside function bodies', () => {
     const fn = createBlockFromKind('function')
     const main = createBlockFromKind('main')

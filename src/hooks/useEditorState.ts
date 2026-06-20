@@ -40,7 +40,7 @@ import {
   updateWhileCondition,
 } from '../lib/program/blockTree'
 import { createDefaultPanelPositions } from '../lib/workspace/panelDefaults'
-import { getInScopeValuesForConsumer, isValueSourceBlock, shouldUseInScopeReference } from '../lib/program/scope'
+import { getInScopeValuesForConsumer, isValueSourceBlock, resolveInScopeReferenceSource, shouldUseInScopeReference } from '../lib/program/scope'
 import { getBlockValueType } from '../lib/program/blockContract'
 import {
   linkFunctionCallToTarget,
@@ -91,14 +91,15 @@ function assignReferenceToSlot(
   sourceBlockId: string,
   target: SlotTarget,
 ): { next: ProgramDocument; accepted: boolean } {
-  const source = findBlockInTree(prev.blocks, sourceBlockId)
+  const resolvedSourceId = resolveInScopeReferenceSource(prev.blocks, sourceBlockId, target)
+  const source = findBlockInTree(prev.blocks, resolvedSourceId)
   if (!source || !isValueSourceBlock(source)) {
     return { next: prev, accepted: false }
   }
 
   const consumerId = target.parentBlockId
   const inScope = getInScopeValuesForConsumer(prev.blocks, consumerId)
-  if (!inScope.some((v) => v.blockId === sourceBlockId)) {
+  if (!inScope.some((v) => v.blockId === resolvedSourceId)) {
     return { next: prev, accepted: false }
   }
 
@@ -144,7 +145,7 @@ function assignReferenceToSlot(
 
   connections = upsertUsageConnection(
     connections,
-    sourceBlockId,
+    resolvedSourceId,
     consumerId,
     inPortId,
     valueRef.data.valueType,
@@ -712,8 +713,9 @@ export function useEditorState() {
     (blockId: string, target: SlotTarget): boolean => {
       let accepted = false
       setProgram((prev) => {
-        if (shouldUseInScopeReference(prev.blocks, blockId, target)) {
-          const refResult = assignReferenceToSlot(prev, blockId, target)
+        const resolvedSourceId = resolveInScopeReferenceSource(prev.blocks, blockId, target)
+        if (shouldUseInScopeReference(prev.blocks, resolvedSourceId, target)) {
+          const refResult = assignReferenceToSlot(prev, resolvedSourceId, target)
           if (refResult.accepted) {
             accepted = true
             return applyProgramUpdate(refResult.next, refResult.next.blocks)

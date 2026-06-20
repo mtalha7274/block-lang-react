@@ -99,7 +99,6 @@ export function BlockRenderer({
 
   if (nestedView && block.kind !== 'main') {
     const inputPort = consumerInputPort(block)
-    const supportsChipDrag = block.kind !== 'primitive'
     return (
       <MinimizedBlockChip
         block={block}
@@ -107,7 +106,7 @@ export function BlockRenderer({
         onOpenEditor={(anchorEl) => ctx.openBlockEditor(block.id, anchorEl)}
         onRemove={() => ctx.detachNestedBlock(block.id)}
         onChipPointerDown={
-          supportsChipDrag && ctx.onNestedChipPointerDown
+          ctx.onNestedChipPointerDown
             ? (e, anchor) =>
                 ctx.onNestedChipPointerDown!(
                   block.id,

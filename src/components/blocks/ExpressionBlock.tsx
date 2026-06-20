@@ -4,6 +4,7 @@ import {
   canExpressionOperandAcceptBlock,
   getExpressionOperandType,
 } from '../../lib/validation/typeChecker'
+import { isForIncrementExpression } from '../../lib/program/blockTree'
 import { useDragContext } from '../canvas/DragContext'
 import { BlockShell } from './BlockShell'
 import { ValueSourceOutPort } from './ValueSourceOutPort'
@@ -29,6 +30,7 @@ export function ExpressionBlock({
   const slotChildOpts = { slotFit: true, nestedView: true } as const
   const ctx = useDragContext()
   const { resultName, resultType, operator, left, right } = block.data
+  const showAssignName = isForIncrementExpression(ctx.getBlocks(), block.id)
   const leftInvalid = left != null && !canExpressionOperandAcceptBlock(block, left)
   const rightInvalid = right != null && !canExpressionOperandAcceptBlock(block, right)
   const hasOperandError = leftInvalid || rightInvalid
@@ -71,14 +73,18 @@ export function ExpressionBlock({
       <div
         className={`expression-block__row${inStatementBody ? ' expression-block__row--nested' : ''}`}
       >
-        <input
-          type="text"
-          className="expression-block__name"
-          value={resultName}
-          placeholder="name"
-          onChange={(e) => ctx.updateExpressionResultName(block.id, e.target.value)}
-        />
-        <span className="expression-block__eq">=</span>
+        {showAssignName && (
+          <>
+            <input
+              type="text"
+              className="expression-block__name"
+              value={resultName}
+              placeholder="name"
+              onChange={(e) => ctx.updateExpressionResultName(block.id, e.target.value)}
+            />
+            <span className="expression-block__eq">=</span>
+          </>
+        )}
         <BlockSlot
           slotTarget={leftSlotTarget}
           scopeConsumerId={block.id}

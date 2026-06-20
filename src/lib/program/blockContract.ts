@@ -64,7 +64,7 @@ function expressionContract(): BlockContract<'expression'> {
   return {
     kind: 'expression',
     getValueType: (block) => block.data.resultType,
-    canUseAsStatement: () => true,
+    canUseAsStatement: () => false,
     canCreateValueReference: () => true,
     getMiniBlockView: (block) => ({
       label: `${block.data.resultName || 'result'} = ...`,

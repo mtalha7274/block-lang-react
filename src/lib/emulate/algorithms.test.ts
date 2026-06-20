@@ -45,7 +45,7 @@ function buildSumToN(n: number) {
     expr('<=', varRef('i'), num(n), '', 'boolean'),
     expr('+', varRef('i'), num(1), 'i'),
     [
-      expr('+', varRef('sum'), varRef('i'), 'sum'),
+      reassign('sum', expr('+', varRef('sum'), varRef('i'))),
     ],
   )
   return program(
@@ -65,7 +65,7 @@ function buildFactorial(n: number) {
         variable('i', num(1)),
         expr('<=', varRef('i'), varRef('n'), '', 'boolean'),
         expr('+', varRef('i'), num(1), 'i'),
-        [expr('*', varRef('fact'), varRef('i'), 'fact')],
+        [reassign('fact', expr('*', varRef('fact'), varRef('i')))],
       ),
     ]),
   )
