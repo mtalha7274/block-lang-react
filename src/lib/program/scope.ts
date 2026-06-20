@@ -104,3 +104,62 @@ export function getInScopeValuesForConsumer(
   if (index <= 0) return collectInScopeValues(statements, index)
   return collectInScopeValues(statements, index)
 }
+
+const CONSUMER_VALUE_SLOT_KINDS = new Set<import('../../types').SlotTarget['kind']>([
+  'variable-value',
+  'print-value',
+  'return-value',
+  'if-condition',
+  'call-arg',
+  'expression-operand',
+  'for-init',
+  'for-condition',
+  'for-increment',
+  'while-condition',
+])
+
+export function isConsumerValueSlot(target: import('../../types').SlotTarget): boolean {
+  return CONSUMER_VALUE_SLOT_KINDS.has(target.kind)
+}
+
+/** Prefer a valueRef when the source block is already an in-scope value on the consumer's line. */
+export function shouldUseInScopeReference(
+  blocks: BlockNode[],
+  sourceBlockId: string,
+  target: import('../../types').SlotTarget,
+): boolean {
+  if (!isConsumerValueSlot(target)) return false
+
+  const resolvedId = resolveInScopeReferenceSource(blocks, sourceBlockId, target)
+  const source = findBlockInTree(blocks, resolvedId)
+  if (!source || !isValueSourceBlock(source)) return false
+
+  const inScope = getInScopeValuesForConsumer(blocks, target.parentBlockId)
+  return inScope.some((value) => value.blockId === resolvedId)
+}
+
+/**
+ * When linking to a value slot, prefer the in-scope Variable that holds an expression
+ * instead of the nested expression block itself.
+ */
+export function resolveInScopeReferenceSource(
+  blocks: BlockNode[],
+  sourceBlockId: string,
+  target: import('../../types').SlotTarget,
+): string {
+  const inScope = getInScopeValuesForConsumer(blocks, target.parentBlockId)
+  if (inScope.some((value) => value.blockId === sourceBlockId)) {
+    return sourceBlockId
+  }
+
+  const source = findBlockInTree(blocks, sourceBlockId)
+  if (source?.kind !== 'expression') return sourceBlockId
+
+  const variableHost = inScope.find((value) => {
+    if (value.kind !== 'variable') return false
+    const variable = findBlockInTree(blocks, value.blockId)
+    return variable?.kind === 'variable' && variable.data.value?.id === sourceBlockId
+  })
+
+  return variableHost?.blockId ?? sourceBlockId
+}

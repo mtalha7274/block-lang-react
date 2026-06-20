@@ -45,6 +45,14 @@ export function MinimizedBlockChip({
   const color = chipColor(block)
   const showReferenceGrip = isValueSourceBlock(block) && !!onReferenceDragStart
 
+  const openEditorFromEvent = (e: React.PointerEvent | React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.minimized-chip__link-grip, .minimized-chip__remove')) {
+      return
+    }
+    const anchor = (e.currentTarget as HTMLElement).closest('[data-block-id]') as HTMLElement
+    if (anchor) onOpenEditor(anchor)
+  }
+
   return (
     <div
       className={`minimized-chip${isSelected ? ' minimized-chip--selected' : ''}`}
@@ -77,9 +85,9 @@ export function MinimizedBlockChip({
           }
         }}
         onClick={(e) => {
+          // Pointer-up on the drag handler opens the editor for chips that support drag.
           if (onChipPointerDown) return
-          const anchor = e.currentTarget.closest('[data-block-id]') as HTMLElement
-          if (anchor) onOpenEditor(anchor)
+          openEditorFromEvent(e)
         }}
       >
         {typeLabel && (

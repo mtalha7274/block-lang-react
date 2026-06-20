@@ -22,7 +22,7 @@ export function StatementBody({
   containerBlock,
   renderChild,
   activeBlockId,
-  slotHint = 'Drop a Variable, Print, Expression, Function Call, or control-flow block here',
+  slotHint = 'Drop a Variable, Print, Return, Function Call, or control-flow block here',
   connections = [],
 }: StatementBodyProps) {
   const slotTarget = {

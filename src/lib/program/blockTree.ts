@@ -1002,3 +1002,8 @@ export function getStatementLineNumber(
   const index = statements.findIndex((s) => s.id === blockId)
   return index >= 0 ? index + 1 : null
 }
+
+export function isForIncrementExpression(blocks: BlockNode[], blockId: string): boolean {
+  const parent = findBlockParent(blocks, blockId)
+  return parent?.target.kind === 'for-increment'
+}

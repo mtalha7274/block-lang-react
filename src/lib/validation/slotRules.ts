@@ -37,7 +37,6 @@ export interface AttachOptions {
 
 const STATEMENT_PALETTE_KINDS = new Set<BlockKind>([
   'variable',
-  'expression',
   'print',
   'return',
   'functionCall',
@@ -128,7 +127,7 @@ export function getSlotRequirement(
     return {
       kind: 'statement',
       message:
-        'Drop a Variable, Print, Return, Expression, Function Call, or control-flow block here',
+        'Drop a Variable, Print, Return, Function Call, or control-flow block here',
     }
   }
 
