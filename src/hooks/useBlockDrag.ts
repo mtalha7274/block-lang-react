@@ -448,17 +448,8 @@ export function useBlockDrag({
       blockId: string,
       e: React.PointerEvent,
       anchorEl: HTMLElement,
-      _openEditor: (_anchor: HTMLElement) => void,
+      openEditor: (anchor: HTMLElement) => void,
     ) => {
-      e.preventDefault()
-      e.stopPropagation()
-
-      try {
-        anchorEl.setPointerCapture(e.pointerId)
-      } catch {
-        // Pointer capture may fail in some browsers; window listeners still handle the gesture.
-      }
-
       const startX = e.clientX
       const startY = e.clientY
       let didDrag = false
@@ -499,16 +490,12 @@ export function useBlockDrag({
       const onUp = (ev: PointerEvent) => {
         window.removeEventListener('pointermove', onMove)
 
-        try {
-          anchorEl.releasePointerCapture(ev.pointerId)
-        } catch {
-          // Ignore if capture was not set.
-        }
-
         const dropTarget = slotTargetFromPoint(ev.clientX, ev.clientY, blockId)
         const block = findBlock(blockId)
 
-        if (didDrag && dropTarget && block) {
+        if (!didDrag) {
+          openEditor(anchorEl)
+        } else if (dropTarget && block) {
           const valid = evaluateSlotValidity(dropTarget, block, null, findBlock, getBlocks)
           if (valid) {
             const ok = onAttachBlockId(blockId, dropTarget)
