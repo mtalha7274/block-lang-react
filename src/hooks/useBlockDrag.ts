@@ -453,6 +453,12 @@ export function useBlockDrag({
       e.preventDefault()
       e.stopPropagation()
 
+      try {
+        anchorEl.setPointerCapture(e.pointerId)
+      } catch {
+        // Pointer capture may fail in some browsers; window listeners still handle the gesture.
+      }
+
       const startX = e.clientX
       const startY = e.clientY
       let didDrag = false
@@ -492,6 +498,12 @@ export function useBlockDrag({
 
       const onUp = (ev: PointerEvent) => {
         window.removeEventListener('pointermove', onMove)
+
+        try {
+          anchorEl.releasePointerCapture(ev.pointerId)
+        } catch {
+          // Ignore if capture was not set.
+        }
 
         const dropTarget = slotTargetFromPoint(ev.clientX, ev.clientY, blockId)
         const block = findBlock(blockId)

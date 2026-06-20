@@ -40,7 +40,7 @@ import {
   updateWhileCondition,
 } from '../lib/program/blockTree'
 import { createDefaultPanelPositions } from '../lib/workspace/panelDefaults'
-import { getInScopeValuesForConsumer, isValueSourceBlock } from '../lib/program/scope'
+import { getInScopeValuesForConsumer, isValueSourceBlock, shouldUseInScopeReference } from '../lib/program/scope'
 import { getBlockValueType } from '../lib/program/blockContract'
 import {
   linkFunctionCallToTarget,
@@ -712,6 +712,14 @@ export function useEditorState() {
     (blockId: string, target: SlotTarget): boolean => {
       let accepted = false
       setProgram((prev) => {
+        if (shouldUseInScopeReference(prev.blocks, blockId, target)) {
+          const refResult = assignReferenceToSlot(prev, blockId, target)
+          if (refResult.accepted) {
+            accepted = true
+            return applyProgramUpdate(refResult.next, refResult.next.blocks)
+          }
+        }
+
         const topLevel = findTopLevelBlock(prev, blockId)
         if (topLevel) {
           const result = attachBlockToSlotInner(prev, topLevel, target)

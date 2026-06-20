@@ -104,3 +104,35 @@ export function getInScopeValuesForConsumer(
   if (index <= 0) return collectInScopeValues(statements, index)
   return collectInScopeValues(statements, index)
 }
+
+const CONSUMER_VALUE_SLOT_KINDS = new Set<import('../../types').SlotTarget['kind']>([
+  'variable-value',
+  'print-value',
+  'return-value',
+  'if-condition',
+  'call-arg',
+  'expression-operand',
+  'for-init',
+  'for-condition',
+  'for-increment',
+  'while-condition',
+])
+
+export function isConsumerValueSlot(target: import('../../types').SlotTarget): boolean {
+  return CONSUMER_VALUE_SLOT_KINDS.has(target.kind)
+}
+
+/** Prefer a valueRef when the source block is already an in-scope value on the consumer's line. */
+export function shouldUseInScopeReference(
+  blocks: BlockNode[],
+  sourceBlockId: string,
+  target: import('../../types').SlotTarget,
+): boolean {
+  if (!isConsumerValueSlot(target)) return false
+
+  const source = findBlockInTree(blocks, sourceBlockId)
+  if (!source || !isValueSourceBlock(source)) return false
+
+  const inScope = getInScopeValuesForConsumer(blocks, target.parentBlockId)
+  return inScope.some((value) => value.blockId === sourceBlockId)
+}
