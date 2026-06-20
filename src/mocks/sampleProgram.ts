@@ -147,21 +147,27 @@ export const sampleProgram: ProgramDocument = {
         },
         body: [
           {
-            id: 'expr-return',
-            kind: 'expression',
+            id: 'ret-add',
+            kind: 'return',
             data: {
-              resultName: 'result',
-              resultType: 'number',
-              operator: '+',
-              left: {
-                id: 'ref-param-a',
-                kind: 'variable',
-                data: { valueType: 'number', name: 'a' },
-              },
-              right: {
-                id: 'ref-param-b',
-                kind: 'variable',
-                data: { valueType: 'number', name: 'b' },
+              value: {
+                id: 'expr-return',
+                kind: 'expression',
+                data: {
+                  resultName: '',
+                  resultType: 'number',
+                  operator: '+',
+                  left: {
+                    id: 'ref-param-a',
+                    kind: 'variable',
+                    data: { valueType: 'number', name: 'a' },
+                  },
+                  right: {
+                    id: 'ref-param-b',
+                    kind: 'variable',
+                    data: { valueType: 'number', name: 'b' },
+                  },
+                },
               },
             },
           },
