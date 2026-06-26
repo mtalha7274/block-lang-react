@@ -32,7 +32,7 @@ function waitForElement(selector: string, timeoutMs = 4000): Promise<Element> {
         reject(new Error(`Element not found: ${selector}`))
         return
       }
-      requestAnimationFrame(tick)
+      window.setTimeout(tick, 16)
     }
     tick()
   })
@@ -50,6 +50,7 @@ export interface AlgorithmPlaybackState {
 
 export function useAlgorithmPlayback(options: {
   resetProgram: () => void
+  loadProgram: (doc: import('../types').ProgramDocument) => void
   attachTemplateBlockToSlot: (
     template: BlockNode,
     target: SlotTarget,
@@ -59,16 +60,21 @@ export function useAlgorithmPlayback(options: {
   centerMain: () => void
   onComplete?: () => void
   defaultAlgorithmId: string
+  fastPlayback?: boolean
 }) {
   const {
     resetProgram,
+    loadProgram,
     attachTemplateBlockToSlot,
     ensureTopLevelFunction,
     openBlockEditor,
     centerMain,
     onComplete,
     defaultAlgorithmId,
+    fastPlayback = false,
   } = options
+
+  const pause = (ms: number) => delay(fastPlayback ? Math.min(ms, 30) : ms)
 
   const cancelRef = useRef(false)
   const [selectedAlgorithmId, setSelectedAlgorithmId] = useState(defaultAlgorithmId)
@@ -100,30 +106,48 @@ export function useAlgorithmPlayback(options: {
         case 'center-main':
           setStatusMessage('Centering workspace…')
           centerMain()
-          await delay(400)
-          centerMain()
+          await pause(400)
+          if (!fastPlayback) centerMain()
           return
 
         case 'pause':
-          await delay(action.ms)
+          await pause(action.ms)
           return
 
         case 'ensure-function':
           ensureTopLevelFunction(action.functionBlock)
-          await delay(120)
+          await pause(120)
           return
 
         case 'open-editor':
           setStatusMessage('Opening block editor…')
           setHighlightBlockId(action.blockId)
           openBlockEditor(action.blockId)
-          await delay(300)
+          await pause(300)
           return
 
         case 'drag-drop': {
           const paletteSel = paletteKindSelector(action.paletteKind)
           const slotSel = slotTargetToSelector(action.target)
           setStatusMessage(`Dragging ${action.label}…`)
+
+          if (fastPlayback) {
+            setGhost({
+              x: 0,
+              y: 0,
+              label: action.label,
+              kind: action.paletteKind,
+            })
+            await pause(150)
+            const result = attachTemplateBlockToSlot(action.template, action.target)
+            if (result.accepted) {
+              setHighlightBlockId(action.template.id)
+              setStatusMessage(`Dropped ${action.label}`)
+              centerMain()
+            }
+            setGhost(null)
+            return
+          }
 
           let paletteEl: Element
           let slotEl: Element
@@ -137,7 +161,7 @@ export function useAlgorithmPlayback(options: {
           }
 
           slotEl.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-          await delay(200)
+          await pause(200)
 
           setGhost({
             x: 0,
@@ -164,7 +188,7 @@ export function useAlgorithmPlayback(options: {
             setStatusMessage(`Dropped ${action.label}`)
             centerMain()
           }
-          await delay(250)
+          await pause(250)
           return
         }
 
@@ -176,6 +200,7 @@ export function useAlgorithmPlayback(options: {
       attachTemplateBlockToSlot,
       centerMain,
       ensureTopLevelFunction,
+      fastPlayback,
       openBlockEditor,
     ],
   )
@@ -188,11 +213,29 @@ export function useAlgorithmPlayback(options: {
     setIsPlaying(true)
     setStatusMessage(`Building: ${algorithm.name}`)
     resetProgram()
-    await delay(300)
+    await pause(300)
 
     const finalDoc = algorithm.build()
     const actions = compilePlaybackScript(finalDoc)
     setTotalSteps(actions.length)
+
+    if (fastPlayback) {
+      for (let i = 0; i < actions.length; i += 1) {
+        if (cancelRef.current) return
+        const action = actions[i]
+        if (action.type === 'ensure-function') {
+          ensureTopLevelFunction(action.functionBlock)
+        }
+      }
+      loadProgram(finalDoc)
+      setStepIndex(actions.length)
+      setHighlightBlockId(null)
+      setGhost(null)
+      setStatusMessage(`Done: ${algorithm.name}`)
+      setIsPlaying(false)
+      onComplete?.()
+      return
+    }
 
     for (let i = 0; i < actions.length; i += 1) {
       if (cancelRef.current) return
@@ -206,7 +249,7 @@ export function useAlgorithmPlayback(options: {
     setStatusMessage(`Done: ${algorithm.name}`)
     setIsPlaying(false)
     onComplete?.()
-  }, [selectedAlgorithmId, resetProgram, runAction, onComplete])
+  }, [selectedAlgorithmId, resetProgram, loadProgram, runAction, onComplete, fastPlayback])
 
   return {
     selectedAlgorithmId,

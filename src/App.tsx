@@ -178,11 +178,13 @@ function App() {
       resetProgram()
       centerMain()
     },
+    loadProgram,
     attachTemplateBlockToSlot,
     ensureTopLevelFunction,
     openBlockEditor: (blockId) => openBlockEditor(blockId),
     centerMain,
     defaultAlgorithmId,
+    fastPlayback: e2eEnabled,
     onComplete: () => {
       if (e2eEnabled) {
         document.body.dataset.demoComplete = 'true'

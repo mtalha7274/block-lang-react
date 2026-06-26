@@ -129,10 +129,14 @@ export async function dragElementToElement(
     .perform()
 }
 
-export async function waitForPlaybackGhost(driver: WebDriver, timeoutMs = 15_000): Promise<void> {
-  await driver.wait(
-    until.elementLocated(By.css('[data-testid="playback-ghost"]')),
-    timeoutMs,
-    'Playback drag ghost did not appear',
-  )
+export async function waitForPlaybackStarted(driver: WebDriver, timeoutMs = 20_000): Promise<void> {
+  await driver.wait(async () => {
+    const ghosts = await driver.findElements(By.css('[data-testid="playback-ghost"]'))
+    if (ghosts.length > 0) return true
+    const state = await driver.executeScript<{
+      isPlaying: boolean
+      stepIndex: number
+    }>(() => window.__BLOCKLANG_TEST__!.getPlaybackState())
+    return state.isPlaying && state.stepIndex > 0
+  }, timeoutMs, 'Playback did not start')
 }

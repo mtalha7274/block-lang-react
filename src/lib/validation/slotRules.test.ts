@@ -188,6 +188,60 @@ describe('slotRules', () => {
     expect(canAttachPaletteKindToSlot(target, 'expression', findBlock)).toBe(false)
   })
 
+  it('accepts expression palette kind in if-condition slots', () => {
+    const ifBlock = createBlockFromKind('if')
+    const target: SlotTarget = {
+      kind: 'if-condition',
+      parentBlockId: ifBlock.id,
+    }
+    const findBlock = (id: string) => (id === ifBlock.id ? ifBlock : undefined)
+
+    expect(canAttachPaletteKindToSlot(target, 'expression', findBlock)).toBe(true)
+  })
+
+  it('preserves primitive template values when allowPrimitiveTypeInit is set', () => {
+    const variable = createBlockFromKind('variable')
+    const primitive: BlockNode = {
+      id: 'prim-14',
+      kind: 'primitive',
+      data: { valueType: 'number', value: 14 },
+    }
+    const target: SlotTarget = {
+      kind: 'variable-value',
+      parentBlockId: variable.id,
+    }
+    const findBlock = (id: string) => (id === variable.id ? variable : undefined)
+
+    const normalized = normalizeBlockForSlot(
+      target,
+      primitive,
+      findBlock,
+      { allowPrimitiveTypeInit: true },
+      () => [variable],
+    )
+    expect(normalized.kind).toBe('primitive')
+    if (normalized.kind !== 'primitive') return
+    expect(normalized.data.value).toBe(14)
+  })
+
+  it('normalizes expression to boolean comparison for if-condition attach', () => {
+    const ifBlock = createBlockFromKind('if')
+    const expression = createBlockFromKind('expression')
+    const target: SlotTarget = {
+      kind: 'if-condition',
+      parentBlockId: ifBlock.id,
+    }
+    const findBlock = (id: string) => (id === ifBlock.id ? ifBlock : undefined)
+
+    const normalized = normalizeBlockForSlot(target, expression, findBlock, {}, () => [ifBlock])
+    expect(normalized.kind).toBe('expression')
+    if (normalized.kind !== 'expression') return
+
+    expect(normalized.data.operator).toBe('==')
+    expect(normalized.data.resultName).toBe('cond')
+    expect(canAttachBlockToSlot(target, normalized, findBlock, {}, () => [ifBlock])).toBe(true)
+  })
+
   it('accepts return statements only inside function bodies', () => {
     const fn = createBlockFromKind('function')
     const main = createBlockFromKind('main')

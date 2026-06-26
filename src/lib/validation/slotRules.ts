@@ -6,6 +6,7 @@ import {
   isValueReturningBlock,
 } from '../program/blockContract'
 import { findEnclosingFunction, isStatementBodyInsideFunction } from '../program/enclosingFunction'
+import { normalizeExpressionForSlot } from '../program/expressionVariable'
 
 type FindBlock = (id: string) => BlockNode | undefined
 type GetBlocks = () => BlockNode[]
@@ -303,6 +304,10 @@ export function canAttachBlockToSlot(
     return canMeetSpecificRequirement(requirement, block)
   }
 
+  if (block.kind === 'expression' && requirement.kind === 'value' && requirement.expectedType) {
+    return true
+  }
+
   if (requirement.expectedType === null) return isValueReturningBlock(block)
 
   if (block.kind === 'primitive' && requirement.expectedType !== 'void') {
@@ -332,11 +337,13 @@ export function canAttachPaletteKindToSlot(
     if (!requirement.allowedKinds.includes(kind)) return false
     if (!requirement.expectedType) return true
     if (kind === 'primitive') return requirement.expectedType !== 'void'
+    if (kind === 'expression') return requirement.expectedType !== 'void'
     return defaultValueTypeForKind(kind) === requirement.expectedType
   }
 
   if (requirement.expectedType === null) return paletteKindReturnsValue(kind)
   if (kind === 'primitive' && requirement.expectedType !== 'void') return true
+  if (kind === 'expression' && requirement.expectedType !== 'void') return true
   return defaultValueTypeForKind(kind) === requirement.expectedType
 }
 
@@ -344,7 +351,7 @@ export function normalizeBlockForSlot(
   target: SlotTarget,
   block: BlockNode,
   findBlock: FindBlock,
-  _options: AttachOptions = {},
+  options: AttachOptions = {},
   getBlocks: GetBlocks = () => [],
 ): BlockNode {
   const requirement = getSlotRequirement(target, findBlock, getBlocks)
@@ -353,6 +360,12 @@ export function normalizeBlockForSlot(
     requirement.expectedType &&
     block.kind === 'primitive'
   ) {
+    if (
+      options.allowPrimitiveTypeInit &&
+      block.data.valueType === requirement.expectedType
+    ) {
+      return block
+    }
     return {
       ...block,
       data: {
@@ -366,6 +379,12 @@ export function normalizeBlockForSlot(
     requirement.expectedType &&
     block.kind === 'primitive'
   ) {
+    if (
+      options.allowPrimitiveTypeInit &&
+      block.data.valueType === requirement.expectedType
+    ) {
+      return block
+    }
     return {
       ...block,
       data: {
@@ -373,6 +392,15 @@ export function normalizeBlockForSlot(
         value: defaultValueForType(requirement.expectedType),
       },
     }
+  }
+  if (block.kind === 'expression') {
+    const expectedType =
+      requirement.kind === 'value'
+        ? requirement.expectedType
+        : requirement.kind === 'specific'
+          ? requirement.expectedType ?? null
+          : null
+    return normalizeExpressionForSlot(block, target, expectedType, getBlocks)
   }
   return block
 }

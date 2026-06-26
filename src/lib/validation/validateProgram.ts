@@ -4,7 +4,7 @@ import {
   getBlockValueType,
 } from './typeChecker'
 import { findEnclosingFunction } from '../program/enclosingFunction'
-import { operators } from '../../constants/operators'
+import { inferExpressionResultType } from '../program/expressionVariable'
 
 export interface ProgramValidationError {
   blockId: BlockId
@@ -76,12 +76,12 @@ function validateBlock(
   }
 
   if (block.kind === 'expression') {
-    const { left, right, operator, resultType } = block.data
-    const operatorEntry = operators.find((op) => op.symbol === operator)
-    if (operatorEntry && resultType !== operatorEntry.resultType) {
+    const { left, right, operator } = block.data
+    const inferredType = inferExpressionResultType(operator)
+    if (block.data.resultType !== inferredType) {
       errors.push({
         blockId: block.id,
-        message: `Expression result type must be ${operatorEntry.resultType} for operator ${operator}`,
+        message: `Expression result type must be ${inferredType} for operator ${operator}`,
       })
     }
     if (left && !canExpressionOperandAcceptBlock(block, left)) {

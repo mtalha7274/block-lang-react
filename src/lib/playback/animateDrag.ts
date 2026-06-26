@@ -25,12 +25,12 @@ export async function animatePointerMove(
         y: from.y + (to.y - from.y) * e,
       })
       if (t < 1) {
-        requestAnimationFrame(tick)
+        window.setTimeout(() => tick(performance.now()), 16)
       } else {
         resolve()
       }
     }
-    requestAnimationFrame(tick)
+    tick(performance.now())
   })
 }
 
