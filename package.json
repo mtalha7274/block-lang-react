@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:pages": "GITHUB_PAGES=true npm run build",
+    "deploy:pages": "node scripts/deploy-gh-pages.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
