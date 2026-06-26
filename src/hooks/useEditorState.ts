@@ -381,7 +381,9 @@ export function useEditorState() {
           ...call,
           data: { ...call.data, functionName: name },
         }
-        const ensured = ensureFunctionForCall(prev.blocks, callWithName)
+        const ensured = ensureFunctionForCall(prev.blocks, callWithName, {
+          linkToExistingByName: true,
+        })
         const blocks = updateBlockInTree(ensured.blocks, blockId, (block) => {
           if (block.kind !== 'functionCall') return block
           return linkFunctionCallToTarget(block, ensured.fn, name)
