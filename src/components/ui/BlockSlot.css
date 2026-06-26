@@ -122,3 +122,12 @@
   outline-offset: 2px;
   background: color-mix(in srgb, var(--accent) 10%, transparent) !important;
 }
+
+.slot--palette-drag .slot__preview,
+.slot--palette-drag .slot__preview * {
+  pointer-events: none;
+}
+
+body[data-palette-drag] .minimized-chip {
+  pointer-events: none;
+}

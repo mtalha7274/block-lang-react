@@ -4,7 +4,7 @@ import { resolveBlockEditorTargetId } from './callWire'
 import { ensureFunctionForCall } from './ensureFunctionForCall'
 
 describe('resolveBlockEditorTargetId', () => {
-  it('routes function call chips to the linked function editor', () => {
+  it('routes function call chips to the call editor', () => {
     const main = createBlockFromKind('main')
     const call = createBlockFromKind('functionCall')
     if (call.kind !== 'functionCall') throw new Error('expected functionCall')
@@ -19,11 +19,11 @@ describe('resolveBlockEditorTargetId', () => {
       },
     }
 
-    expect(resolveBlockEditorTargetId(linkedCall, ensured.blocks)).toBe(ensured.fn.id)
+    expect(resolveBlockEditorTargetId(linkedCall, ensured.blocks)).toBe(linkedCall.id)
     expect(resolveBlockEditorTargetId(main, ensured.blocks)).toBe(main.id)
   })
 
-  it('routes nested calls to a distinct function, not the enclosing definition', () => {
+  it('routes nested calls to their own call editor', () => {
     const main = createBlockFromKind('main')
     const parentFn = createBlockFromKind('function')
     if (parentFn.kind !== 'function') throw new Error('expected function')
@@ -43,7 +43,7 @@ describe('resolveBlockEditorTargetId', () => {
     }
 
     expect(ensured.fn.id).not.toBe(parentFn.id)
-    expect(resolveBlockEditorTargetId(linkedCall, ensured.blocks)).toBe(ensured.fn.id)
+    expect(resolveBlockEditorTargetId(linkedCall, ensured.blocks)).toBe(linkedCall.id)
     expect(resolveBlockEditorTargetId(linkedCall, ensured.blocks)).not.toBe(parentFn.id)
   })
 })

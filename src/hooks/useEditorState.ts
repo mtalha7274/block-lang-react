@@ -44,6 +44,7 @@ import { getInScopeValuesForConsumer, isValueSourceBlock, resolveInScopeReferenc
 import { getBlockValueType } from '../lib/program/blockContract'
 import {
   linkFunctionCallToTarget,
+  syncLinkedFunctionCalls,
 } from '../lib/program/callWire'
 import { ensureFunctionForCall } from '../lib/program/ensureFunctionForCall'
 import {
@@ -550,14 +551,20 @@ export function useEditorState() {
       const parent = findBlockInTree(prev.blocks, target.parentBlockId)
       if (!parent || parent.kind !== 'function') return { next: prev, accepted: false }
       if (parent.data.signature) return { next: prev, accepted: false }
+      const withSignature = updateFunctionSignature(
+        blocksWithoutSource,
+        target.parentBlockId,
+        blockToAttach,
+      )
+      const fn = findBlockInTree(withSignature, target.parentBlockId)
+      const syncedBlocks =
+        fn?.kind === 'function'
+          ? syncLinkedFunctionCalls(withSignature, fn)
+          : withSignature
       return {
         next: {
           ...prev,
-          blocks: updateFunctionSignature(
-            blocksWithoutSource,
-            target.parentBlockId,
-            blockToAttach,
-          ),
+          blocks: syncedBlocks,
           placements: placementsWithoutSource,
         },
         accepted: true,

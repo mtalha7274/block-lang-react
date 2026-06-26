@@ -76,6 +76,7 @@ export function MinimizedBlockChip({
         type="button"
         className="minimized-chip__main"
         onPointerDown={(e) => {
+          e.stopPropagation()
           if ((e.target as HTMLElement).closest('.minimized-chip__link-grip, .minimized-chip__remove')) {
             return
           }
@@ -85,7 +86,7 @@ export function MinimizedBlockChip({
           }
         }}
         onClick={(e) => {
-          // Pointer-up on the drag handler opens the editor for chips that support drag.
+          e.stopPropagation()
           if (onChipPointerDown) return
           openEditorFromEvent(e)
         }}

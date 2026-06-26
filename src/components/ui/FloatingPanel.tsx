@@ -151,7 +151,9 @@ export function FloatingPanel({
   return (
     <div
       ref={panelRef}
+      id={id}
       className="floating-panel"
+      data-testid={id}
       style={{
         left: position.x,
         top: position.y,

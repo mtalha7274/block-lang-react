@@ -98,7 +98,7 @@ export function FunctionBlock({
               filled={!!signature}
             >
               {signature && renderChild
-                ? renderChild(signature, { compact: true })
+                ? renderChild(signature, { nestedView: true, slotFit: true })
                 : null}
             </BlockSlot>
             {derivedParams.length > 0 && (

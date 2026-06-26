@@ -44,6 +44,7 @@ export function BlockSlot({
     invalid ? 'slot--invalid' : '',
     rejected ? 'slot--reject' : '',
     showPreview ? 'slot--preview-sizing' : '',
+    ctx.draggingPaletteKind ? 'slot--palette-drag' : '',
     ctx.rejectMessage && hovered ? 'slot--reject' : '',
   ]
     .filter(Boolean)
@@ -69,10 +70,26 @@ export function BlockSlot({
             ctx.onSlotPointerUp(slotTarget)
           }
         },
-        onDragOver: ctx.handleSlotDragOver?.(slotTarget, expectedType),
-        onDrop: ctx.handleSlotDrop?.(slotTarget, expectedType),
+        onDragOver: (e: React.DragEvent) => {
+          ctx.handleSlotDragOver?.(slotTarget, expectedType)?.(e)
+        },
+        onDrop: (e: React.DragEvent) => {
+          ctx.handleSlotDrop?.(slotTarget, expectedType)?.(e)
+        },
       }
     : {}
+
+  const passThroughDrag = (e: React.DragEvent) => {
+    if (!slotTarget) return
+    if (e.currentTarget === e.target) return
+    ctx.handleSlotDragOver?.(slotTarget, expectedType)?.(e)
+  }
+
+  const passThroughDrop = (e: React.DragEvent) => {
+    if (!slotTarget) return
+    if (e.currentTarget === e.target) return
+    ctx.handleSlotDrop?.(slotTarget, expectedType)?.(e)
+  }
 
   const previewStyle: React.CSSProperties | undefined = showPreview
     ? {
@@ -122,9 +139,19 @@ export function BlockSlot({
           )}
         </>
       )}
-      <div className="slot__content">
+      <div
+        className="slot__content"
+        onDragOver={passThroughDrag}
+        onDrop={passThroughDrop}
+      >
         {filled && children ? (
-          <div className="slot__preview">{children}</div>
+          <div
+            className="slot__preview"
+            onDragOver={passThroughDrag}
+            onDrop={passThroughDrop}
+          >
+            {children}
+          </div>
         ) : (
           !filled && <span className="slot__placeholder">+</span>
         )}
