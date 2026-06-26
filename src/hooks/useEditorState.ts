@@ -497,10 +497,21 @@ export function useEditorState() {
       let blocksForAttach = blocksWithoutSource
       let createdFunctionId: string | undefined
       if (blockToAttach.kind === 'functionCall') {
-        const ensured = ensureFunctionForCall(blocksWithoutSource, blockToAttach)
-        blocksForAttach = ensured.blocks
-        if (ensured.created) createdFunctionId = ensured.fn.id
-        statementToAttach = linkFunctionCallToTarget(blockToAttach, ensured.fn)
+        const linkedFn = blockToAttach.data.targetFunctionId
+          ? blocksWithoutSource.find(
+              (b): b is Extract<BlockNode, { kind: 'function' }> =>
+                b.kind === 'function' && b.id === blockToAttach.data.targetFunctionId,
+            )
+          : undefined
+        if (linkedFn) {
+          blocksForAttach = blocksWithoutSource
+          statementToAttach = linkFunctionCallToTarget(blockToAttach, linkedFn)
+        } else {
+          const ensured = ensureFunctionForCall(blocksWithoutSource, blockToAttach)
+          blocksForAttach = ensured.blocks
+          if (ensured.created) createdFunctionId = ensured.fn.id
+          statementToAttach = linkFunctionCallToTarget(blockToAttach, ensured.fn)
+        }
       }
       return {
         next: {
@@ -798,6 +809,34 @@ export function useEditorState() {
     [],
   )
 
+  const attachTemplateBlockToSlot = useCallback(
+    (template: BlockNode, target: SlotTarget): { accepted: boolean; createdFunctionId?: string } => {
+      let result = { accepted: false, createdFunctionId: undefined as string | undefined }
+      setProgram((prev) => {
+        const inner = attachBlockToSlotInner(prev, template, target, {
+          allowPrimitiveTypeInit: true,
+        })
+        result = {
+          accepted: inner.accepted,
+          createdFunctionId: inner.createdFunctionId,
+        }
+        return inner.next
+      })
+      return result
+    },
+    [],
+  )
+
+  const ensureTopLevelFunction = useCallback(
+    (fn: Extract<BlockNode, { kind: 'function' }>) => {
+      setProgram((prev) => {
+        if (prev.blocks.some((b) => b.id === fn.id)) return prev
+        return applyProgramUpdate(prev, [...prev.blocks, fn])
+      })
+    },
+    [],
+  )
+
   const detachNestedBlock = useCallback((blockId: string) => {
     setProgram((prev) => {
       const parent = findBlockParent(prev.blocks, blockId)
@@ -866,6 +905,8 @@ export function useEditorState() {
     assignInScopeReference,
     getInScopeValues,
     attachNewBlockToSlot,
+    attachTemplateBlockToSlot,
+    ensureTopLevelFunction,
     detachNestedBlock,
     removeTopLevelBlock,
     findTopLevelBlock: (id: string) => findTopLevelBlock(program, id),

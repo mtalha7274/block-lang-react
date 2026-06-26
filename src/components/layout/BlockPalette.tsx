@@ -26,6 +26,7 @@ export function BlockPalette({ onDragStart, onDragEnd }: BlockPaletteProps) {
                     <button
                       type="button"
                       className="palette__chip"
+                      data-palette-kind={kind}
                       draggable
                       onDragStart={onDragStart(kind)}
                       onDragEnd={onDragEnd}

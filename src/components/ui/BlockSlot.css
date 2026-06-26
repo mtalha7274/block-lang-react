@@ -116,3 +116,9 @@
   background: color-mix(in srgb, var(--type-boolean) 10%, white);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--type-boolean) 20%, transparent);
 }
+
+.slot--playback-hover {
+  outline: 2px dashed var(--accent) !important;
+  outline-offset: 2px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent) !important;
+}

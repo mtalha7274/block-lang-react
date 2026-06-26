@@ -6,8 +6,9 @@ import {
   E2E_BASE_URL,
   waitForAppReady,
 } from './helpers/driver'
+import { dragElementToElement, waitForPlaybackGhost } from './helpers/dragDrop'
 
-async function waitForDemoComplete(driver: WebDriver, timeoutMs = 45_000): Promise<void> {
+async function waitForDemoComplete(driver: WebDriver, timeoutMs = 120_000): Promise<void> {
   await driver.wait(async () => {
     return driver.executeScript<boolean>(
       () => document.body.dataset.demoComplete === 'true',
@@ -28,19 +29,21 @@ describe('algorithm playback e2e (Chrome WebDriver)', () => {
     if (driver) await driver.quit()
   })
 
-  it('shows blocks being added step by step when playing an algorithm', async () => {
+  it('plays sum-to-n with visible drag ghost and builds blocks', async () => {
     await driver.executeScript(() => {
       window.__BLOCKLANG_TEST__!.selectAlgorithm('sum-to-n')
     })
 
     await driver.findElement(By.css('[data-testid="toolbar-algorithm-play"]')).click()
 
+    await waitForPlaybackGhost(driver)
+
     await driver.wait(async () => {
       const state = await driver.executeScript(() =>
         window.__BLOCKLANG_TEST__!.getPlaybackState(),
       )
       return state.isPlaying && state.stepIndex > 0
-    }, 10_000, 'Playback did not start advancing steps')
+    }, 20_000, 'Playback did not advance')
 
     await waitForDemoComplete(driver)
 
@@ -53,6 +56,27 @@ describe('algorithm playback e2e (Chrome WebDriver)', () => {
       window.__BLOCKLANG_TEST__!.getValidationErrors(),
     )
     expect(validationErrors).toEqual([])
+  })
+
+  it('drags a variable from palette to main like a user', async () => {
+    await dragElementToElement(
+      driver,
+      '[data-palette-kind="variable"]',
+      '[data-slot-kind="statement-body"][data-slot-parent-id="main"][data-slot-region="main"]',
+      400,
+    )
+
+    await driver.wait(async () => {
+      const chips = await driver.findElements(
+        By.css('[data-block-id="main"] .minimized-chip'),
+      )
+      return chips.length >= 1
+    }, 10_000, 'Variable chip did not appear in main')
+
+    const chips = await driver.findElements(
+      By.css('[data-block-id="main"] .minimized-chip'),
+    )
+    expect(chips.length).toBeGreaterThanOrEqual(1)
   })
 
   it('lists at least 10 algorithms in the dropdown menu', async () => {

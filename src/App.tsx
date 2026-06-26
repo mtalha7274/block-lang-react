@@ -31,6 +31,7 @@ import {
 import { createTestApi } from './testApi'
 import { algorithmCatalog, defaultAlgorithmId } from './constants/algorithmCatalog'
 import { getSiblingEditorIdsToClose } from './lib/program/editorStackRules'
+import { PlaybackGhost } from './components/playback/PlaybackGhost'
 import type { BlockKind, PanelTab, SlotTarget } from './types'
 import './App.css'
 
@@ -66,6 +67,8 @@ function App() {
     updateBlockLayout,
     attachBlockIdToSlot,
     attachNewBlockToSlot,
+    attachTemplateBlockToSlot,
+    ensureTopLevelFunction,
     assignInScopeReference,
     getInScopeValues,
     detachNestedBlock,
@@ -74,21 +77,13 @@ function App() {
 
   const emulator = useEmulator()
 
-  const algorithmPlayback = useAlgorithmPlayback({
-    loadProgram,
-    resetProgram: () => {
-      emulator.reset()
-      setEditorStack([])
-      resetProgram()
-      setCenterMainTrigger((n) => n + 1)
-    },
-    defaultAlgorithmId,
-    onComplete: () => {
-      if (e2eEnabled) {
-        document.body.dataset.demoComplete = 'true'
-      }
-    },
-  })
+  const e2eEnabled =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('e2e')
+
+  const centerMain = useCallback(() => {
+    setCenterMainTrigger((n) => n + 1)
+  }, [])
 
   const compileResult = useMemo(() => compileProgram(program), [program])
   const validationErrors = useMemo(() => validateProgram(program), [program])
@@ -105,52 +100,6 @@ function App() {
       prev.filter((id) => findBlockInTree(program.blocks, id) !== undefined),
     )
   }, [program])
-
-  const e2eEnabled =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('e2e')
-
-  useEffect(() => {
-    if (!e2eEnabled) {
-      delete window.__BLOCKLANG_TEST__
-      return
-    }
-
-    window.__BLOCKLANG_TEST__ = createTestApi({
-      loadProgram,
-      getProgram: () => program,
-      runEmulate: () => {
-        emulator.run(program)
-        setActivePanelTab('variables')
-      },
-      getEmulationState: () => {
-        const result = runProgram(program)
-        return {
-          status: result.status,
-          variables: result.variables.map((v) => ({
-            name: v.name,
-            value: v.value,
-          })),
-          errorMessage: result.errorMessage,
-        }
-      },
-      selectAlgorithm: algorithmPlayback.setSelectedAlgorithmId,
-      playAlgorithm: algorithmPlayback.play,
-      getPlaybackState: () => ({
-        isPlaying: algorithmPlayback.isPlaying,
-        selectedAlgorithmId: algorithmPlayback.selectedAlgorithmId,
-        stepIndex: algorithmPlayback.stepIndex,
-        totalSteps: algorithmPlayback.totalSteps,
-        demoComplete: document.body.dataset.demoComplete === 'true',
-      }),
-    })
-    document.body.dataset.testid = 'app-ready'
-
-    return () => {
-      delete window.__BLOCKLANG_TEST__
-      delete document.body.dataset.testid
-    }
-  }, [e2eEnabled, loadProgram, program, emulator, algorithmPlayback])
 
   const raiseCanvasBlock = useCallback(
     (blockId: string) => {
@@ -221,6 +170,67 @@ function App() {
     },
     [attachNewBlockToSlot, openBlockEditor],
   )
+
+  const algorithmPlayback = useAlgorithmPlayback({
+    resetProgram: () => {
+      emulator.reset()
+      setEditorStack([])
+      resetProgram()
+      centerMain()
+    },
+    attachTemplateBlockToSlot,
+    ensureTopLevelFunction,
+    openBlockEditor: (blockId) => openBlockEditor(blockId),
+    centerMain,
+    defaultAlgorithmId,
+    onComplete: () => {
+      if (e2eEnabled) {
+        document.body.dataset.demoComplete = 'true'
+      }
+    },
+  })
+
+  useEffect(() => {
+    if (!e2eEnabled) {
+      delete window.__BLOCKLANG_TEST__
+      return
+    }
+
+    window.__BLOCKLANG_TEST__ = createTestApi({
+      loadProgram,
+      getProgram: () => program,
+      runEmulate: () => {
+        emulator.run(program)
+        setActivePanelTab('variables')
+      },
+      getEmulationState: () => {
+        const result = runProgram(program)
+        return {
+          status: result.status,
+          variables: result.variables.map((v) => ({
+            name: v.name,
+            value: v.value,
+          })),
+          errorMessage: result.errorMessage,
+        }
+      },
+      selectAlgorithm: algorithmPlayback.setSelectedAlgorithmId,
+      playAlgorithm: algorithmPlayback.play,
+      getPlaybackState: () => ({
+        isPlaying: algorithmPlayback.isPlaying,
+        selectedAlgorithmId: algorithmPlayback.selectedAlgorithmId,
+        stepIndex: algorithmPlayback.stepIndex,
+        totalSteps: algorithmPlayback.totalSteps,
+        demoComplete: document.body.dataset.demoComplete === 'true',
+      }),
+    })
+    document.body.dataset.testid = 'app-ready'
+
+    return () => {
+      delete window.__BLOCKLANG_TEST__
+      delete document.body.dataset.testid
+    }
+  }, [e2eEnabled, loadProgram, program, emulator, algorithmPlayback])
 
   const drag = useBlockDrag({
     onMoveBlock: moveBlock,
@@ -410,6 +420,15 @@ function App() {
                 block={referenceDragBlock}
                 x={drag.referenceDragPosition.x}
                 y={drag.referenceDragPosition.y}
+              />
+            )}
+            {algorithmPlayback.ghost && (
+              <PlaybackGhost
+                label={algorithmPlayback.ghost.label}
+                kind={algorithmPlayback.ghost.kind}
+                x={algorithmPlayback.ghost.x}
+                y={algorithmPlayback.ghost.y}
+                visible={algorithmPlayback.isPlaying}
               />
             )}
             <WorkspaceCanvas
