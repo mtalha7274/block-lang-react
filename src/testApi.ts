@@ -13,6 +13,15 @@ export interface BlockLangTestApi {
     variables: Record<string, string>
     errorMessage?: string
   }
+  selectAlgorithm: (id: string) => void
+  playAlgorithm: () => Promise<void>
+  getPlaybackState: () => {
+    isPlaying: boolean
+    selectedAlgorithmId: string
+    stepIndex: number
+    totalSteps: number
+    demoComplete: boolean
+  }
   isReady: () => boolean
 }
 
@@ -30,6 +39,15 @@ export function createTestApi(handlers: {
     status: string
     variables: { name: string; value: string }[]
     errorMessage?: string
+  }
+  selectAlgorithm: (id: string) => void
+  playAlgorithm: () => Promise<void>
+  getPlaybackState: () => {
+    isPlaying: boolean
+    selectedAlgorithmId: string
+    stepIndex: number
+    totalSteps: number
+    demoComplete: boolean
   }
 }): BlockLangTestApi {
   return {
@@ -51,6 +69,9 @@ export function createTestApi(handlers: {
         errorMessage: state.errorMessage,
       }
     },
+    selectAlgorithm: handlers.selectAlgorithm,
+    playAlgorithm: handlers.playAlgorithm,
+    getPlaybackState: handlers.getPlaybackState,
     isReady: () => true,
   }
 }

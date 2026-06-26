@@ -11,7 +11,7 @@ import {
 } from './components/layout'
 import { FloatingPanel } from './components/ui'
 import { BlockEditorPanel } from './components/panels'
-import { useEditorState, useBlockDrag, useEmulator, useStackZOrder } from './hooks'
+import { useEditorState, useBlockDrag, useEmulator, useStackZOrder, useAlgorithmPlayback } from './hooks'
 import { DragContext, type DragContextValue } from './components/canvas/DragContext'
 import { blockRegistry } from './constants'
 import { compileProgram } from './lib/compile'
@@ -29,6 +29,8 @@ import {
   PALETTE_PANEL_WIDTH,
 } from './lib/workspace/panelDefaults'
 import { createTestApi } from './testApi'
+import { algorithmCatalog, defaultAlgorithmId } from './constants/algorithmCatalog'
+import { getSiblingEditorIdsToClose } from './lib/program/editorStackRules'
 import type { BlockKind, PanelTab, SlotTarget } from './types'
 import './App.css'
 
@@ -71,6 +73,22 @@ function App() {
   } = useEditorState()
 
   const emulator = useEmulator()
+
+  const algorithmPlayback = useAlgorithmPlayback({
+    loadProgram,
+    resetProgram: () => {
+      emulator.reset()
+      setEditorStack([])
+      resetProgram()
+      setCenterMainTrigger((n) => n + 1)
+    },
+    defaultAlgorithmId,
+    onComplete: () => {
+      if (e2eEnabled) {
+        document.body.dataset.demoComplete = 'true'
+      }
+    },
+  })
 
   const compileResult = useMemo(() => compileProgram(program), [program])
   const validationErrors = useMemo(() => validateProgram(program), [program])
@@ -116,6 +134,15 @@ function App() {
           errorMessage: result.errorMessage,
         }
       },
+      selectAlgorithm: algorithmPlayback.setSelectedAlgorithmId,
+      playAlgorithm: algorithmPlayback.play,
+      getPlaybackState: () => ({
+        isPlaying: algorithmPlayback.isPlaying,
+        selectedAlgorithmId: algorithmPlayback.selectedAlgorithmId,
+        stepIndex: algorithmPlayback.stepIndex,
+        totalSteps: algorithmPlayback.totalSteps,
+        demoComplete: document.body.dataset.demoComplete === 'true',
+      }),
     })
     document.body.dataset.testid = 'app-ready'
 
@@ -123,7 +150,7 @@ function App() {
       delete window.__BLOCKLANG_TEST__
       delete document.body.dataset.testid
     }
-  }, [e2eEnabled, loadProgram, program, emulator])
+  }, [e2eEnabled, loadProgram, program, emulator, algorithmPlayback])
 
   const raiseCanvasBlock = useCallback(
     (blockId: string) => {
@@ -157,9 +184,11 @@ function App() {
     (blockId: string, anchorEl?: HTMLElement | null) => {
       const editorBlockId = getEditorTargetBlockId(blockId)
       const panelId = `blockEditor-${editorBlockId}`
+      const siblingEditorsToClose = getSiblingEditorIdsToClose(program.blocks, blockId)
 
       setEditorStack((prev) => {
-        if (prev.includes(editorBlockId)) return prev
+        const withoutSiblings = prev.filter((id) => !siblingEditorsToClose.has(id))
+        if (withoutSiblings.includes(editorBlockId)) return withoutSiblings
 
         if (
           anchorEl &&
@@ -174,12 +203,12 @@ function App() {
           movePanel(panelId, pos.x, pos.y)
         }
 
-        return [...prev, editorBlockId]
+        return [...withoutSiblings, editorBlockId]
       })
 
       raisePanel(panelId)
     },
-    [getEditorTargetBlockId, movePanel, panelPositions, raisePanel],
+    [getEditorTargetBlockId, movePanel, panelPositions, program.blocks, raisePanel],
   )
 
   const attachNewBlockFromPalette = useCallback(
@@ -309,11 +338,13 @@ function App() {
   )
 
   const handleReset = () => {
+    algorithmPlayback.stop()
     emulator.reset()
     setActivePanelTab('typescript')
     setEditorStack([])
     resetProgram()
     setCenterMainTrigger((n) => n + 1)
+    delete document.body.dataset.demoComplete
   }
 
   const handleCenterMain = useCallback(
@@ -324,6 +355,8 @@ function App() {
   )
 
   const isEmulating = emulator.isActive
+  const activeHighlightBlockId =
+    algorithmPlayback.highlightBlockId ?? emulator.highlight?.activeBlockId
 
   const handleEmulateToggle = () => {
     if (emulator.isActive) {
@@ -351,6 +384,16 @@ function App() {
           emulateDisabled={!canEmulate}
           onEmulateToggle={handleEmulateToggle}
           onReset={handleReset}
+          algorithms={algorithmCatalog}
+          selectedAlgorithmId={algorithmPlayback.selectedAlgorithmId}
+          isAlgorithmPlaying={algorithmPlayback.isPlaying}
+          algorithmStatusMessage={algorithmPlayback.statusMessage}
+          onSelectAlgorithm={algorithmPlayback.setSelectedAlgorithmId}
+          onAlgorithmPlay={() => {
+            delete document.body.dataset.demoComplete
+            void algorithmPlayback.play()
+          }}
+          onAlgorithmStop={algorithmPlayback.stop}
         />
       }
       outputPanel={
@@ -377,7 +420,7 @@ function App() {
 
             <CanvasBlocksLayer
               program={program}
-              activeBlockId={emulator.highlight?.activeBlockId}
+              activeBlockId={activeHighlightBlockId}
               scrollOffset={scrollOffset}
               scrollRef={scrollRef}
               centerMainTrigger={centerMainTrigger}
@@ -434,7 +477,7 @@ function App() {
                 >
                   <BlockEditorPanel
                     block={block}
-                    activeBlockId={emulator.highlight?.activeBlockId}
+                    activeBlockId={activeHighlightBlockId}
                   />
                 </FloatingPanel>
               )

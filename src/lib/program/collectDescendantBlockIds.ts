@@ -54,6 +54,11 @@ function collectNodeIds(node: BlockNode): string[] {
   return ids
 }
 
+/** All block ids nested inside `root`, excluding `root` itself. */
+export function collectSubtreeBlockIds(root: BlockNode): string[] {
+  return collectNodeIds(root).filter((id) => id !== root.id)
+}
+
 export function collectDescendantBlockIds(container: BlockNode): string[] {
   switch (container.kind) {
     case 'main':

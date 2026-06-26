@@ -1,4 +1,6 @@
 import type { EmulationStatus } from '../../types'
+import type { AlgorithmDefinition } from '../../constants/algorithmCatalog'
+import { AlgorithmPlayButton } from './AlgorithmPlayButton'
 import { Button } from '../ui'
 import './Toolbar.css'
 
@@ -9,6 +11,13 @@ interface ToolbarProps {
   emulateDisabled?: boolean
   onEmulateToggle: () => void
   onReset?: () => void
+  algorithms: AlgorithmDefinition[]
+  selectedAlgorithmId: string
+  isAlgorithmPlaying: boolean
+  algorithmStatusMessage?: string | null
+  onSelectAlgorithm: (id: string) => void
+  onAlgorithmPlay: () => void
+  onAlgorithmStop: () => void
 }
 
 export function Toolbar({
@@ -18,6 +27,13 @@ export function Toolbar({
   emulateDisabled = false,
   onEmulateToggle,
   onReset,
+  algorithms,
+  selectedAlgorithmId,
+  isAlgorithmPlaying,
+  algorithmStatusMessage,
+  onSelectAlgorithm,
+  onAlgorithmPlay,
+  onAlgorithmStop,
 }: ToolbarProps) {
   return (
     <div className="toolbar">
@@ -27,6 +43,16 @@ export function Toolbar({
       </div>
 
       <div className="toolbar__controls">
+        <AlgorithmPlayButton
+          algorithms={algorithms}
+          selectedId={selectedAlgorithmId}
+          isPlaying={isAlgorithmPlaying}
+          statusMessage={algorithmStatusMessage}
+          onSelect={onSelectAlgorithm}
+          onPlay={onAlgorithmPlay}
+          onStop={onAlgorithmStop}
+        />
+
         {isEmulating && (
           <span className="toolbar__running">
             <span
@@ -39,7 +65,7 @@ export function Toolbar({
           variant="primary"
           size="md"
           active={isEmulating}
-          disabled={!isEmulating && emulateDisabled}
+          disabled={(!isEmulating && emulateDisabled) || isAlgorithmPlaying}
           onClick={onEmulateToggle}
           className="toolbar__emulate"
           data-testid="toolbar-emulate"

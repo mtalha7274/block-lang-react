@@ -31,3 +31,9 @@ Functions declare a return *type* on the Function block footer (RETURNS type sel
 - **Void** functions: Return block has no value slot and emits `return;`.
 - If no Return runs, non-void functions fall back to an implicit default (`0`, `''`, or `false`).
 - Expression blocks in a function body do **not** implicitly return.
+
+## 5. Same-Level Editor Exclusivity
+
+Multiple nested block editors may be open along one branch, but **two sibling statements at the same body level must not keep their editors open at the same time**.
+
+Example: in Main with a Variable and a Print statement, opening the Print editor closes the Variable editor (and any editors opened inside Variable). Opening Variable closes Print (and its nested editors). Deeper nested editors along the active branch remain allowed.
