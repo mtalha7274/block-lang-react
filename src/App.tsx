@@ -16,6 +16,7 @@ import { DragContext, type DragContextValue } from './components/canvas/DragCont
 import { blockRegistry } from './constants'
 import { compileProgram } from './lib/compile'
 import { validateProgram } from './lib/validation/validateProgram'
+import { runProgram } from './lib/emulate'
 import { ReferenceDragGhost } from './components/blocks/ReferenceDragGhost'
 import { resolveBlockEditorTargetId } from './lib/program/callWire'
 import { findBlockInTree, getStatementLineNumber } from './lib/program/blockTree'
@@ -27,6 +28,7 @@ import {
   INSPECTOR_PANEL_WIDTH,
   PALETTE_PANEL_WIDTH,
 } from './lib/workspace/panelDefaults'
+import { createTestApi } from './testApi'
 import type { BlockKind, PanelTab, SlotTarget } from './types'
 import './App.css'
 
@@ -47,6 +49,7 @@ function App() {
     moveBlock,
     movePanel,
     resetProgram,
+    loadProgram,
     updateBlockType,
     updateBlockValue,
     updateVariableName,
@@ -84,6 +87,43 @@ function App() {
       prev.filter((id) => findBlockInTree(program.blocks, id) !== undefined),
     )
   }, [program])
+
+  const e2eEnabled =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('e2e')
+
+  useEffect(() => {
+    if (!e2eEnabled) {
+      delete window.__BLOCKLANG_TEST__
+      return
+    }
+
+    window.__BLOCKLANG_TEST__ = createTestApi({
+      loadProgram,
+      getProgram: () => program,
+      runEmulate: () => {
+        emulator.run(program)
+        setActivePanelTab('variables')
+      },
+      getEmulationState: () => {
+        const result = runProgram(program)
+        return {
+          status: result.status,
+          variables: result.variables.map((v) => ({
+            name: v.name,
+            value: v.value,
+          })),
+          errorMessage: result.errorMessage,
+        }
+      },
+    })
+    document.body.dataset.testid = 'app-ready'
+
+    return () => {
+      delete window.__BLOCKLANG_TEST__
+      delete document.body.dataset.testid
+    }
+  }, [e2eEnabled, loadProgram, program, emulator])
 
   const raiseCanvasBlock = useCallback(
     (blockId: string) => {
