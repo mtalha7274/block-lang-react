@@ -24,6 +24,20 @@
   letter-spacing: -0.02em;
 }
 
+.toolbar__center {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.toolbar__playback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .toolbar__controls {
   display: flex;
   align-items: center;

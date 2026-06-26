@@ -137,7 +137,7 @@ function App() {
 
       setEditorStack((prev) => {
         const withoutSiblings = prev.filter((id) => !siblingEditorsToClose.has(id))
-        if (withoutSiblings.includes(editorBlockId)) return withoutSiblings
+        const withoutSelf = withoutSiblings.filter((id) => id !== editorBlockId)
 
         if (
           anchorEl &&
@@ -152,7 +152,7 @@ function App() {
           movePanel(panelId, pos.x, pos.y)
         }
 
-        return [...withoutSiblings, editorBlockId]
+        return [...withoutSelf, editorBlockId]
       })
 
       raisePanel(panelId)
@@ -178,6 +178,7 @@ function App() {
       resetProgram()
       centerMain()
     },
+    getProgram: () => program,
     attachTemplateBlockToSlot,
     ensureTopLevelFunction,
     openBlockEditor: (blockId) => openBlockEditor(blockId),
@@ -398,6 +399,7 @@ function App() {
           selectedAlgorithmId={algorithmPlayback.selectedAlgorithmId}
           isAlgorithmPlaying={algorithmPlayback.isPlaying}
           algorithmStatusMessage={algorithmPlayback.statusMessage}
+          algorithmValidationError={algorithmPlayback.validationError}
           onSelectAlgorithm={algorithmPlayback.setSelectedAlgorithmId}
           onAlgorithmPlay={() => {
             delete document.body.dataset.demoComplete
@@ -466,7 +468,7 @@ function App() {
               />
             </FloatingPanel>
 
-            {editorStack.map((blockId) => {
+            {editorStack.map((blockId, stackIndex) => {
               const block = findBlock(blockId)
               if (!block) return null
               const panelId = `blockEditor-${blockId}`
@@ -476,6 +478,7 @@ function App() {
                   ? block.data.name
                   : (blockRegistry[block.kind]?.label ?? 'Block Editor')
               const lineNumber = getStatementLineNumber(program.blocks, blockId)
+              const stackZ = 30 + stackIndex * 10
               return (
                 <FloatingPanel
                   key={blockId}
@@ -488,7 +491,7 @@ function App() {
                   }}
                   onMove={movePanel}
                   minWidth={280}
-                  zIndex={panelZ.getZ(panelId, 25)}
+                  zIndex={Math.max(panelZ.getZ(panelId, stackZ), stackZ)}
                   workspaceContainerRef={workspaceContainerRef}
                   onFocus={() => raisePanel(panelId)}
                   onHeaderClose={() => closeBlockEditor(blockId)}
