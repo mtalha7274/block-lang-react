@@ -1,15 +1,12 @@
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import type { Variant, Size } from '../../types'
 import './Button.css'
 
-interface ButtonProps {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
   size?: Size
   active?: boolean
-  disabled?: boolean
-  children: React.ReactNode
-  onClick?: () => void
-  title?: string
-  className?: string
+  children: ReactNode
 }
 
 export function Button({
@@ -21,6 +18,7 @@ export function Button({
   onClick,
   title,
   className = '',
+  ...rest
 }: ButtonProps) {
   return (
     <button
@@ -29,6 +27,7 @@ export function Button({
       disabled={disabled}
       onClick={onClick}
       title={title}
+      {...rest}
     >
       {children}
     </button>

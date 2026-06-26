@@ -188,6 +188,10 @@ export function useEditorState() {
     setProgram(emptyProgram)
   }, [])
 
+  const loadProgram = useCallback((doc: ProgramDocument) => {
+    setProgram(doc)
+  }, [])
+
   const updateBlockType = useCallback((blockId: string, valueType: ValueType) => {
     setProgram((prev) => ({
       ...prev,
@@ -843,6 +847,7 @@ export function useEditorState() {
     moveBlock,
     movePanel,
     resetProgram,
+    loadProgram,
     updateBlockType,
     updateBlockValue,
     updateVariableName,

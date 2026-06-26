@@ -42,6 +42,7 @@ export function Toolbar({
           disabled={!isEmulating && emulateDisabled}
           onClick={onEmulateToggle}
           className="toolbar__emulate"
+          data-testid="toolbar-emulate"
           title={
             !isEmulating && emulateDisabled
               ? 'Fix validation errors before emulating'

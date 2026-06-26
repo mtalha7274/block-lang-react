@@ -54,6 +54,7 @@ export function RightPanel({
             role="tab"
             aria-selected={activeTab === tab.id}
             className={`right-panel__tab${activeTab === tab.id ? ' right-panel__tab--active' : ''}`}
+            data-testid={`tab-${tab.id}`}
             onClick={() => setTab(tab.id)}
           >
             {tab.label}

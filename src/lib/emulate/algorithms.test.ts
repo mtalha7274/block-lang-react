@@ -22,6 +22,7 @@ import {
   variable,
   whileLoop,
 } from '../../testUtils/programBuilder'
+import { buildBubbleSortWithThreeFunctions } from '../../testUtils/bubbleSortProgram'
 
 function swapIfGreater(a: string, b: string) {
   return ifBlock(expr('>', varRef(a), varRef(b), '', 'boolean'), [
@@ -275,6 +276,17 @@ describe('algorithm programs', () => {
 
   it('bubble-sorts four fixed variables', () => {
     const doc = buildBubbleSort([5, 1, 4, 2])
+    expect(validateProgram(doc)).toEqual([])
+    const result = runProgram(doc)
+    expect(result.status).toBe('success')
+    expect(getVarNumber(result, 'n0')).toBe(1)
+    expect(getVarNumber(result, 'n1')).toBe(2)
+    expect(getVarNumber(result, 'n2')).toBe(4)
+    expect(getVarNumber(result, 'n3')).toBe(5)
+  })
+
+  it('bubble-sorts using three helper functions', () => {
+    const doc = buildBubbleSortWithThreeFunctions([5, 1, 4, 2])
     expect(validateProgram(doc)).toEqual([])
     const result = runProgram(doc)
     expect(result.status).toBe('success')
