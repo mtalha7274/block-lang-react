@@ -170,6 +170,56 @@ function mergeUniqueInScope(
   }
 }
 
+function isInsideNestedControlBodyInFunction(
+  blocks: BlockNode[],
+  consumerId: string,
+  fnId: string,
+): boolean {
+  let walkId: string | null = consumerId
+
+  while (walkId && walkId !== fnId) {
+    const parent = findBlockParent(blocks, walkId)
+    if (!parent) return false
+
+    if (parent.target.kind === 'statement-body') {
+      const { region } = parent.target
+      if (
+        region === 'if-true' ||
+        region === 'if-false' ||
+        region === 'for' ||
+        region === 'while'
+      ) {
+        return true
+      }
+    }
+
+    walkId = parent.parentBlockId
+  }
+
+  return false
+}
+
+function collectAllFunctionBodyValueSources(
+  fn: Extract<BlockNode, { kind: 'function' }>,
+): InScopeValue[] {
+  const result: InScopeValue[] = []
+  for (const stmt of fn.data.body) {
+    collectValueSourcesFromStatement(stmt, result)
+  }
+  return result
+}
+
+function collectFunctionParamValues(
+  fn: Extract<BlockNode, { kind: 'function' }>,
+): InScopeValue[] {
+  return deriveFunctionParams(fn).map((param) => ({
+    blockId: functionParamSourceId(fn.id, param.id),
+    label: param.name,
+    valueType: param.type,
+    kind: 'functionParam' as const,
+  }))
+}
+
 export function getInScopeValuesForConsumer(
   blocks: BlockNode[],
   consumerBlockId: string,
@@ -226,13 +276,11 @@ export function getInScopeValuesForConsumer(
 
   const enclosingFn = findEnclosingFunction(blocks, consumerId)
   if (enclosingFn) {
-    const paramValues = deriveFunctionParams(enclosingFn).map((param) => ({
-      blockId: functionParamSourceId(enclosingFn.id, param.id),
-      label: param.name,
-      valueType: param.type,
-      kind: 'functionParam' as const,
-    }))
-    mergeUniqueInScope(result, seen, paramValues)
+    mergeUniqueInScope(result, seen, collectFunctionParamValues(enclosingFn))
+
+    if (isInsideNestedControlBodyInFunction(blocks, consumerId, enclosingFn.id)) {
+      mergeUniqueInScope(result, seen, collectAllFunctionBodyValueSources(enclosingFn))
+    }
   }
 
   return result
