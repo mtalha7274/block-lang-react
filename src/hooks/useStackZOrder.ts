@@ -5,9 +5,12 @@ export function useStackZOrder(baseZ = 10) {
   const [zOrder, setZOrder] = useState<Record<string, number>>({})
 
   const raise = useCallback((id: string) => {
-    counterRef.current += 1
-    const next = counterRef.current
-    setZOrder((prev) => ({ ...prev, [id]: next }))
+    let next = 0
+    setZOrder((prev) => {
+      next = Math.max(counterRef.current, ...Object.values(prev)) + 1
+      counterRef.current = next
+      return { ...prev, [id]: next }
+    })
     return next
   }, [])
 
