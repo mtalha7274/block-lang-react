@@ -20,7 +20,7 @@ import { runProgram } from './lib/emulate'
 import { ReferenceDragGhost } from './components/blocks/ReferenceDragGhost'
 import { resolveBlockEditorTargetId } from './lib/program/callWire'
 import { findBlockInTree, getStatementLineNumber } from './lib/program/blockTree'
-import { collectDescendantBlockIds } from './lib/program/collectDescendantBlockIds'
+import { collectDescendantBlockIds, collectSubtreeBlockIds } from './lib/program/collectDescendantBlockIds'
 import { computeEditorPanelPosition } from './lib/workspace/editorPanelPlacement'
 import {
   getInspectorDefaultX,
@@ -58,6 +58,9 @@ function App() {
     updateVariableName,
     updateFunctionReturnType,
     updateFunctionName,
+    addFunctionParam,
+    removeFunctionParam,
+    updateFunctionParam,
     addTypeParamRow,
     removeTypeParamRow,
     updateTypeParamRow,
@@ -131,13 +134,13 @@ function App() {
 
   const openBlockEditor = useCallback(
     (blockId: string, anchorEl?: HTMLElement | null) => {
-      const editorBlockId = getEditorTargetBlockId(blockId)
+      const editorBlockId = blockId
       const panelId = `blockEditor-${editorBlockId}`
       const siblingEditorsToClose = getSiblingEditorIdsToClose(program.blocks, blockId)
 
       setEditorStack((prev) => {
         const withoutSiblings = prev.filter((id) => !siblingEditorsToClose.has(id))
-        if (withoutSiblings.includes(editorBlockId)) return withoutSiblings
+        const withoutSelf = withoutSiblings.filter((id) => id !== editorBlockId)
 
         if (
           anchorEl &&
@@ -152,12 +155,12 @@ function App() {
           movePanel(panelId, pos.x, pos.y)
         }
 
-        return [...withoutSiblings, editorBlockId]
+        return [...withoutSelf, editorBlockId]
       })
 
       raisePanel(panelId)
     },
-    [getEditorTargetBlockId, movePanel, panelPositions, program.blocks, raisePanel],
+    [movePanel, panelPositions, program.blocks, raisePanel],
   )
 
   const attachNewBlockFromPalette = useCallback(
@@ -244,9 +247,17 @@ function App() {
     getBlocks: () => program.blocks,
   })
 
-  const closeBlockEditor = useCallback((blockId: string) => {
-    setEditorStack((prev) => prev.filter((id) => id !== blockId))
-  }, [])
+  const closeBlockEditor = useCallback(
+    (blockId: string) => {
+      setEditorStack((prev) => {
+        const block = findBlock(blockId)
+        if (!block) return prev.filter((id) => id !== blockId)
+        const toClose = new Set([blockId, ...collectSubtreeBlockIds(block)])
+        return prev.filter((id) => !toClose.has(id))
+      })
+    },
+    [findBlock],
+  )
 
   const closeNestedEditors = useCallback(
     (containerBlockId: string) => {
@@ -292,6 +303,9 @@ function App() {
       updateVariableName,
       updateFunctionReturnType,
       updateFunctionName,
+      addFunctionParam,
+      removeFunctionParam,
+      updateFunctionParam,
       addTypeParamRow,
       removeTypeParamRow,
       updateTypeParamRow,
@@ -328,6 +342,9 @@ function App() {
       updateVariableName,
       updateFunctionReturnType,
       updateFunctionName,
+      addFunctionParam,
+      removeFunctionParam,
+      updateFunctionParam,
       addTypeParamRow,
       removeTypeParamRow,
       updateTypeParamRow,
@@ -466,7 +483,7 @@ function App() {
               />
             </FloatingPanel>
 
-            {editorStack.map((blockId) => {
+            {editorStack.map((blockId, stackIndex) => {
               const block = findBlock(blockId)
               if (!block) return null
               const panelId = `blockEditor-${blockId}`
@@ -476,6 +493,7 @@ function App() {
                   ? block.data.name
                   : (blockRegistry[block.kind]?.label ?? 'Block Editor')
               const lineNumber = getStatementLineNumber(program.blocks, blockId)
+              const stackZ = 30 + stackIndex * 10
               return (
                 <FloatingPanel
                   key={blockId}
@@ -488,11 +506,10 @@ function App() {
                   }}
                   onMove={movePanel}
                   minWidth={280}
-                  zIndex={panelZ.getZ(panelId, 25)}
+                  zIndex={panelZ.getZ(panelId, stackZ)}
                   workspaceContainerRef={workspaceContainerRef}
                   onFocus={() => raisePanel(panelId)}
                   onHeaderClose={() => closeBlockEditor(blockId)}
-                  onHeaderRemove={() => handleDetachNestedBlock(blockId)}
                 >
                   <BlockEditorPanel
                     block={block}

@@ -80,6 +80,7 @@ export function VariableBlock({
           <span className="variable-block__eq">=</span>
           <BlockSlot
             slotTarget={slotTarget}
+            scopeConsumerId={block.id}
             expectedType={valueType}
             hint={`Drop a ${valueType} value here`}
             filled={!!value}

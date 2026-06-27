@@ -31,7 +31,7 @@ export const algorithmCatalog: AlgorithmDefinition[] = [
   {
     id: 'sum-to-n',
     name: 'Sum 1 to N',
-    description: 'Adds integers from 1 through N using a for loop',
+    description: 'Adds integers from 1 through N using a while loop',
     build: () => buildSumToN(10),
     getSteps: () => buildIncrementalProgramSteps(buildSumToN(10)),
   },

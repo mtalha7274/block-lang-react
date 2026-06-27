@@ -10,7 +10,7 @@ export const learningStages: LearningStage[] = [
   {
     id: 'basics',
     label: 'Basics',
-    blockKinds: ['primitive', 'variable', 'type', 'print'],
+    blockKinds: ['primitive', 'variable', 'print'],
   },
   {
     id: 'expressions',
@@ -20,7 +20,7 @@ export const learningStages: LearningStage[] = [
   {
     id: 'control',
     label: 'Control Flow',
-    blockKinds: ['if', 'for', 'while'],
+    blockKinds: ['if', 'while'],
   },
   {
     id: 'functions',

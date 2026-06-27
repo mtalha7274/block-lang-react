@@ -6,7 +6,7 @@ import {
   slotRejectMessage,
 } from '../lib/validation/slotRules'
 import { createValueRefFromSource } from '../lib/program/valueRef'
-import { getInScopeValuesForConsumer, isValueSourceBlock } from '../lib/program/scope'
+import { getInScopeValuesForConsumer, isValueSourceBlock, resolveScopeConsumerId } from '../lib/program/scope'
 
 import type { HoverPreviewSize } from '../components/canvas/DragContext'
 import { slotTargetKey } from '../components/canvas/DragContext'
@@ -53,7 +53,7 @@ function evaluateReferenceSlotValidity(
   const valueRef = createValueRefFromSource(source)
   if (!valueRef) return false
 
-  const consumerId = target.parentBlockId
+  const consumerId = resolveScopeConsumerId(getBlocks(), target)
   const inScope = getInScopeValuesForConsumer(getBlocks(), consumerId)
   if (!inScope.some((v) => v.blockId === sourceBlockId)) return false
 

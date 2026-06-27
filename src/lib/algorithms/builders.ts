@@ -4,7 +4,6 @@ import {
   bool,
   call,
   expr,
-  forLoop,
   func,
   ifBlock,
   main,
@@ -38,12 +37,11 @@ export function buildSumToN(n: number): ProgramDocument {
   return program(
     main([
       variable('sum', num(0)),
-      forLoop(
-        variable('i', num(1)),
-        expr('<=', varRef('i'), num(n), '', 'boolean'),
-        expr('+', varRef('i'), num(1), 'i'),
-        [reassign('sum', expr('+', varRef('sum'), varRef('i')))],
-      ),
+      variable('i', num(1)),
+      whileLoop(expr('<=', varRef('i'), num(n), '', 'boolean'), [
+        reassign('sum', expr('+', varRef('sum'), varRef('i'))),
+        reassign('i', expr('+', varRef('i'), num(1), 'i')),
+      ]),
     ]),
   )
 }
@@ -53,12 +51,11 @@ export function buildFactorial(n: number): ProgramDocument {
     main([
       variable('n', num(n)),
       variable('fact', num(1)),
-      forLoop(
-        variable('i', num(1)),
-        expr('<=', varRef('i'), varRef('n'), '', 'boolean'),
-        expr('+', varRef('i'), num(1), 'i'),
-        [reassign('fact', expr('*', varRef('fact'), varRef('i')))],
-      ),
+      variable('i', num(1)),
+      whileLoop(expr('<=', varRef('i'), varRef('n'), '', 'boolean'), [
+        reassign('fact', expr('*', varRef('fact'), varRef('i'))),
+        reassign('i', expr('+', varRef('i'), num(1), 'i')),
+      ]),
     ]),
   )
 }
@@ -69,16 +66,12 @@ export function buildFibonacci(target: number): ProgramDocument {
       variable('a', num(0)),
       variable('b', num(1)),
       variable('i', num(0)),
-      forLoop(
-        undefined,
-        expr('<', varRef('i'), num(target), '', 'boolean'),
-        expr('+', varRef('i'), num(1), 'i'),
-        [
-          variable('next', expr('+', varRef('a'), varRef('b'))),
-          reassign('a', varRef('b')),
-          reassign('b', varRef('next')),
-        ],
-      ),
+      whileLoop(expr('<', varRef('i'), num(target), '', 'boolean'), [
+        variable('next', expr('+', varRef('a'), varRef('b'))),
+        reassign('a', varRef('b')),
+        reassign('b', varRef('next')),
+        reassign('i', expr('+', varRef('i'), num(1), 'i')),
+      ]),
     ]),
   )
 }
@@ -112,14 +105,13 @@ export function buildIsPrime(n: number): ProgramDocument {
       variable('n', num(n)),
       variable('isPrime', bool(true), 'boolean'),
       variable('i', num(2)),
-      forLoop(
-        undefined,
+      whileLoop(
         expr('<=', expr('*', varRef('i'), varRef('i'), '', 'number'), varRef('n'), '', 'boolean'),
-        expr('+', varRef('i'), num(1), 'i'),
         [
           ifBlock(expr('==', expr('%', varRef('n'), varRef('i'), '', 'number'), num(0), '', 'boolean'), [
             reassign('isPrime', bool(false), 'boolean'),
           ]),
+          reassign('i', expr('+', varRef('i'), num(1), 'i')),
         ],
       ),
     ]),
@@ -149,17 +141,13 @@ export function buildLinearSearch(): ProgramDocument {
       variable('target', num(7)),
       variable('found', num(-1)),
       variable('i', num(0)),
-      forLoop(
-        undefined,
-        expr('<', varRef('i'), num(values.length), '', 'boolean'),
-        expr('+', varRef('i'), num(1), 'i'),
-        [
-          ifBlock(expr('==', varRef('n0'), varRef('target'), '', 'boolean'), [reassign('found', num(0))]),
-          ifBlock(expr('==', varRef('n1'), varRef('target'), '', 'boolean'), [reassign('found', num(1))]),
-          ifBlock(expr('==', varRef('n2'), varRef('target'), '', 'boolean'), [reassign('found', num(2))]),
-          ifBlock(expr('==', varRef('n3'), varRef('target'), '', 'boolean'), [reassign('found', num(3))]),
-        ],
-      ),
+      whileLoop(expr('<', varRef('i'), num(values.length), '', 'boolean'), [
+        ifBlock(expr('==', varRef('n0'), varRef('target'), '', 'boolean'), [reassign('found', num(0))]),
+        ifBlock(expr('==', varRef('n1'), varRef('target'), '', 'boolean'), [reassign('found', num(1))]),
+        ifBlock(expr('==', varRef('n2'), varRef('target'), '', 'boolean'), [reassign('found', num(2))]),
+        ifBlock(expr('==', varRef('n3'), varRef('target'), '', 'boolean'), [reassign('found', num(3))]),
+        reassign('i', expr('+', varRef('i'), num(1), 'i')),
+      ]),
     ]),
   )
 }
@@ -195,12 +183,10 @@ export function buildPower(base: number, exp: number): ProgramDocument {
       variable('exp', num(exp)),
       variable('result', num(1)),
       variable('i', num(0)),
-      forLoop(
-        undefined,
-        expr('<', varRef('i'), varRef('exp'), '', 'boolean'),
-        expr('+', varRef('i'), num(1), 'i'),
-        [reassign('result', expr('*', varRef('result'), varRef('base')))],
-      ),
+      whileLoop(expr('<', varRef('i'), varRef('exp'), '', 'boolean'), [
+        reassign('result', expr('*', varRef('result'), varRef('base'))),
+        reassign('i', expr('+', varRef('i'), num(1), 'i')),
+      ]),
     ]),
   )
 }
@@ -223,12 +209,10 @@ export function buildCountdown(from: number): ProgramDocument {
   return program(
     main([
       variable('i', num(from)),
-      forLoop(
-        undefined,
-        expr('>=', varRef('i'), num(1), '', 'boolean'),
-        expr('-', varRef('i'), num(1), 'i'),
-        [print(varRef('i'))],
-      ),
+      whileLoop(expr('>=', varRef('i'), num(1), '', 'boolean'), [
+        print(varRef('i')),
+        reassign('i', expr('-', varRef('i'), num(1), 'i')),
+      ]),
     ]),
   )
 }

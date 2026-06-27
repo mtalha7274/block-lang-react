@@ -54,6 +54,8 @@ export function findBlockInTree(
     if (block.kind === 'type') {
       for (const v of block.data.variables) {
         if (v.id === blockId) return v
+        const nested = findBlockInTree([v], blockId)
+        if (nested) return nested
       }
     }
     if (block.kind === 'if') {
@@ -69,11 +71,43 @@ export function findBlockInTree(
         if (inFalse) return inFalse
       }
     }
+    if (block.kind === 'expression') {
+      if (block.data.left) {
+        if (block.data.left.id === blockId) return block.data.left
+        const inLeft = findBlockInTree([block.data.left], blockId)
+        if (inLeft) return inLeft
+      }
+      if (block.data.right) {
+        if (block.data.right.id === blockId) return block.data.right
+        const inRight = findBlockInTree([block.data.right], blockId)
+        if (inRight) return inRight
+      }
+    }
     if (block.kind === 'for') {
+      if (block.data.init) {
+        if (block.data.init.id === blockId) return block.data.init
+        const inInit = findBlockInTree([block.data.init], blockId)
+        if (inInit) return inInit
+      }
+      if (block.data.condition) {
+        if (block.data.condition.id === blockId) return block.data.condition
+        const inCond = findBlockInTree([block.data.condition], blockId)
+        if (inCond) return inCond
+      }
+      if (block.data.increment) {
+        if (block.data.increment.id === blockId) return block.data.increment
+        const inInc = findBlockInTree([block.data.increment], blockId)
+        if (inInc) return inInc
+      }
       const found = findBlockInTree(block.data.body, blockId)
       if (found) return found
     }
     if (block.kind === 'while') {
+      if (block.data.condition) {
+        if (block.data.condition.id === blockId) return block.data.condition
+        const inCond = findBlockInTree([block.data.condition], blockId)
+        if (inCond) return inCond
+      }
       const found = findBlockInTree(block.data.body, blockId)
       if (found) return found
     }
@@ -224,19 +258,80 @@ export function updateBlockInTree(
               : undefined,
           },
         }
-      case 'for':
+      case 'expression':
+        if (block.data.left?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, left: updater(block.data.left) },
+          }
+        }
+        if (block.data.right?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, right: updater(block.data.right) },
+          }
+        }
         return {
           ...block,
           data: {
             ...block.data,
+            left: block.data.left
+              ? updateBlockInTree([block.data.left], blockId, updater)[0]
+              : undefined,
+            right: block.data.right
+              ? updateBlockInTree([block.data.right], blockId, updater)[0]
+              : undefined,
+          },
+        }
+      case 'for':
+        if (block.data.init?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, init: updater(block.data.init) },
+          }
+        }
+        if (block.data.condition?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, condition: updater(block.data.condition) },
+          }
+        }
+        if (block.data.increment?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, increment: updater(block.data.increment) },
+          }
+        }
+        return {
+          ...block,
+          data: {
+            ...block.data,
+            init: block.data.init
+              ? updateBlockInTree([block.data.init], blockId, updater)[0]
+              : undefined,
+            condition: block.data.condition
+              ? updateBlockInTree([block.data.condition], blockId, updater)[0]
+              : undefined,
+            increment: block.data.increment
+              ? updateBlockInTree([block.data.increment], blockId, updater)[0]
+              : undefined,
             body: updateBlockInTree(block.data.body, blockId, updater),
           },
         }
       case 'while':
+        if (block.data.condition?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, condition: updater(block.data.condition) },
+          }
+        }
         return {
           ...block,
           data: {
             ...block.data,
+            condition: block.data.condition
+              ? updateBlockInTree([block.data.condition], blockId, updater)[0]
+              : undefined,
             body: updateBlockInTree(block.data.body, blockId, updater),
           },
         }
@@ -354,11 +449,33 @@ function mapBlockNode(
             : undefined,
         },
       }
+    case 'expression':
+      return {
+        ...mapped,
+        data: {
+          ...mapped.data,
+          left: mapped.data.left
+            ? mapBlockNode(mapped.data.left, mapper)
+            : undefined,
+          right: mapped.data.right
+            ? mapBlockNode(mapped.data.right, mapper)
+            : undefined,
+        },
+      }
     case 'for':
       return {
         ...mapped,
         data: {
           ...mapped.data,
+          init: mapped.data.init
+            ? mapBlockNode(mapped.data.init, mapper)
+            : undefined,
+          condition: mapped.data.condition
+            ? mapBlockNode(mapped.data.condition, mapper)
+            : undefined,
+          increment: mapped.data.increment
+            ? mapBlockNode(mapped.data.increment, mapper)
+            : undefined,
           body: mapBlocksInTree(mapped.data.body, mapper),
         },
       }
@@ -367,6 +484,9 @@ function mapBlockNode(
         ...mapped,
         data: {
           ...mapped.data,
+          condition: mapped.data.condition
+            ? mapBlockNode(mapped.data.condition, mapper)
+            : undefined,
           body: mapBlocksInTree(mapped.data.body, mapper),
         },
       }
@@ -391,23 +511,9 @@ export function updateNestedVariableValue(
   parentId: string,
   value: BlockNode | undefined,
 ): BlockNode[] {
-  return blocks.map((block) => {
-    if (block.id === parentId && block.kind === 'variable') {
-      return { ...block, data: { ...block.data, value } }
-    }
-    if (block.kind === 'main') {
-      return {
-        ...block,
-        data: {
-          body: block.data.body.map((stmt) =>
-            stmt.id === parentId && stmt.kind === 'variable'
-              ? { ...stmt, data: { ...stmt.data, value } }
-              : stmt,
-          ),
-        },
-      }
-    }
-    return block
+  return updateBlockInTree(blocks, parentId, (block) => {
+    if (block.kind !== 'variable') return block
+    return { ...block, data: { ...block.data, value } }
   })
 }
 

@@ -28,6 +28,13 @@ export interface DragContextValue {
   updateVariableName: (blockId: string, name: string) => void
   updateFunctionReturnType: (blockId: string, returnType: ValueType) => void
   updateFunctionName: (blockId: string, name: string) => void
+  addFunctionParam: (functionId: string) => void
+  removeFunctionParam: (functionId: string, rowId: string) => void
+  updateFunctionParam: (
+    functionId: string,
+    rowId: string,
+    patch: { name?: string; type?: ValueType },
+  ) => void
   addTypeParamRow: (typeBlockId: string) => void
   removeTypeParamRow: (typeBlockId: string, rowId: string) => void
   updateTypeParamRow: (
@@ -94,6 +101,9 @@ export function useDragContext(): DragContextValue {
       updateVariableName: () => {},
       updateFunctionReturnType: () => {},
       updateFunctionName: () => {},
+      addFunctionParam: () => {},
+      removeFunctionParam: () => {},
+      updateFunctionParam: () => {},
       addTypeParamRow: () => {},
       removeTypeParamRow: () => {},
       updateTypeParamRow: () => {},

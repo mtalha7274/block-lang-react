@@ -1,4 +1,4 @@
-import type { BlockNode, ValueType } from '../../types'
+import type { BlockNode, SlotTarget, ValueType } from '../../types'
 import {
   canCreateValueReference,
   getBlockValueType,
@@ -88,24 +88,140 @@ function getStatementsForParent(
   }
 }
 
+const SCOPE_HOST_BLOCK_KINDS = new Set<BlockNode['kind']>([
+  'if',
+  'for',
+  'while',
+  'print',
+  'return',
+  'variable',
+  'expression',
+  'functionCall',
+])
+
+/** Walk from a slot or nested block to the block that owns scope for "use existing…". */
+export function resolveScopeConsumerBlockId(
+  blocks: BlockNode[],
+  startBlockId: string,
+): string {
+  let currentId = startBlockId
+
+  while (true) {
+    const block = findBlockInTree(blocks, currentId)
+    if (block && SCOPE_HOST_BLOCK_KINDS.has(block.kind)) {
+      return currentId
+    }
+
+    const parent = findBlockParent(blocks, currentId)
+    if (!parent) return startBlockId
+    currentId = parent.parentBlockId
+  }
+}
+
+export function resolveScopeConsumerId(
+  blocks: BlockNode[],
+  target: SlotTarget | string,
+): string {
+  if (typeof target === 'string') {
+    return resolveScopeConsumerBlockId(blocks, target)
+  }
+  return resolveScopeConsumerBlockId(blocks, target.parentBlockId)
+}
+
+function findEnclosingForLoops(
+  blocks: BlockNode[],
+  blockId: string,
+): Extract<BlockNode, { kind: 'for' }>[] {
+  const loops: Extract<BlockNode, { kind: 'for' }>[] = []
+  let walkId: string | null = blockId
+
+  while (walkId) {
+    const parent = findBlockParent(blocks, walkId)
+    if (!parent) break
+
+    const container = findBlockInTree(blocks, parent.parentBlockId)
+    if (container?.kind === 'for') {
+      loops.push(container)
+      walkId = container.id
+      continue
+    }
+
+    walkId = parent.parentBlockId
+  }
+
+  return loops
+}
+
+function mergeUniqueInScope(
+  target: InScopeValue[],
+  seen: Set<string>,
+  incoming: InScopeValue[],
+): void {
+  for (const value of incoming) {
+    if (seen.has(value.blockId)) continue
+    seen.add(value.blockId)
+    target.push(value)
+  }
+}
+
 export function getInScopeValuesForConsumer(
   blocks: BlockNode[],
   consumerBlockId: string,
 ): InScopeValue[] {
-  const parent = findBlockParent(blocks, consumerBlockId)
-  if (!parent || parent.target.kind !== 'statement-body') return []
+  const consumerId = resolveScopeConsumerBlockId(blocks, consumerBlockId)
+  const result: InScopeValue[] = []
+  const seen = new Set<string>()
 
-  const statements = getStatementsForParent(
-    blocks,
-    parent.parentBlockId,
-    parent.target.region,
-  )
-  const index = statements.findIndex((s) => s.id === consumerBlockId)
-  if (index <= 0) return collectInScopeValues(statements, index)
-  return collectInScopeValues(statements, index)
+  let walkId: string | null = consumerId
+
+  while (walkId) {
+    const parent = findBlockParent(blocks, walkId)
+    if (!parent) break
+
+    if (parent.target.kind === 'statement-body') {
+      const statements = getStatementsForParent(
+        blocks,
+        parent.parentBlockId,
+        parent.target.region,
+      )
+      const index = statements.findIndex((s) => s.id === walkId)
+      if (index > 0) {
+        mergeUniqueInScope(result, seen, collectInScopeValues(statements, index))
+      }
+      walkId = parent.parentBlockId
+      continue
+    }
+
+    if (
+      parent.target.kind === 'if-condition' ||
+      parent.target.kind === 'for-init' ||
+      parent.target.kind === 'for-condition' ||
+      parent.target.kind === 'for-increment' ||
+      parent.target.kind === 'while-condition' ||
+      parent.target.kind === 'expression-operand' ||
+      parent.target.kind === 'variable-value' ||
+      parent.target.kind === 'print-value' ||
+      parent.target.kind === 'return-value' ||
+      parent.target.kind === 'call-arg'
+    ) {
+      walkId = parent.parentBlockId
+      continue
+    }
+
+    break
+  }
+
+  for (const forLoop of findEnclosingForLoops(blocks, consumerId)) {
+    if (!forLoop.data.init) continue
+    const initValues: InScopeValue[] = []
+    collectValueSourcesFromStatement(forLoop.data.init, initValues)
+    mergeUniqueInScope(result, seen, initValues)
+  }
+
+  return result
 }
 
-const CONSUMER_VALUE_SLOT_KINDS = new Set<import('../../types').SlotTarget['kind']>([
+const CONSUMER_VALUE_SLOT_KINDS = new Set<SlotTarget['kind']>([
   'variable-value',
   'print-value',
   'return-value',
@@ -118,7 +234,7 @@ const CONSUMER_VALUE_SLOT_KINDS = new Set<import('../../types').SlotTarget['kind
   'while-condition',
 ])
 
-export function isConsumerValueSlot(target: import('../../types').SlotTarget): boolean {
+export function isConsumerValueSlot(target: SlotTarget): boolean {
   return CONSUMER_VALUE_SLOT_KINDS.has(target.kind)
 }
 
@@ -126,7 +242,7 @@ export function isConsumerValueSlot(target: import('../../types').SlotTarget): b
 export function shouldUseInScopeReference(
   blocks: BlockNode[],
   sourceBlockId: string,
-  target: import('../../types').SlotTarget,
+  target: SlotTarget,
 ): boolean {
   if (!isConsumerValueSlot(target)) return false
 
@@ -134,7 +250,8 @@ export function shouldUseInScopeReference(
   const source = findBlockInTree(blocks, resolvedId)
   if (!source || !isValueSourceBlock(source)) return false
 
-  const inScope = getInScopeValuesForConsumer(blocks, target.parentBlockId)
+  const consumerId = resolveScopeConsumerId(blocks, target)
+  const inScope = getInScopeValuesForConsumer(blocks, consumerId)
   return inScope.some((value) => value.blockId === resolvedId)
 }
 
@@ -145,9 +262,10 @@ export function shouldUseInScopeReference(
 export function resolveInScopeReferenceSource(
   blocks: BlockNode[],
   sourceBlockId: string,
-  target: import('../../types').SlotTarget,
+  target: SlotTarget,
 ): string {
-  const inScope = getInScopeValuesForConsumer(blocks, target.parentBlockId)
+  const consumerId = resolveScopeConsumerId(blocks, target)
+  const inScope = getInScopeValuesForConsumer(blocks, consumerId)
   if (inScope.some((value) => value.blockId === sourceBlockId)) {
     return sourceBlockId
   }

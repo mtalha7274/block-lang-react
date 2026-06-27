@@ -1,10 +1,10 @@
 import type { BlockNode, RenderChildOptions, ConnectionEdge } from '../../types'
 import { useDragContext } from '../canvas/DragContext'
-import { deriveTypeParams } from '../../lib/program/typeParams'
+import { formatFunctionParamsSummary } from '../../lib/program/functionParams'
 import { BlockShell } from './BlockShell'
 import { StatementBody } from './StatementBody'
 import { CALL_IN_PORT } from '../../lib/program/callWire'
-import { TypeSelect, TypeBadge, BlockSlot } from '../ui'
+import { TypeSelect } from '../ui'
 import './FunctionBlock.css'
 
 interface FunctionBlockProps {
@@ -23,27 +23,18 @@ export function FunctionBlock({
   connections = [],
 }: FunctionBlockProps) {
   const ctx = useDragContext()
-  const { name, returnType, signature, body } = block.data
+  const { name, returnType, params, body } = block.data
   const state =
     activeBlockId === block.id ? 'active' : block.visual?.state ?? 'default'
 
-  const derivedParams = signature ? deriveTypeParams(signature) : []
   const hasCallInWire = connections.some(
     (c) => c.purpose === 'wire' && c.to.blockId === block.id,
   )
-  const slotTarget = {
-    kind: 'function-signature' as const,
-    parentBlockId: block.id,
-  }
 
   if (compact) {
-    const paramStr =
-      derivedParams.length > 0
-        ? derivedParams.map((p) => `${p.type} ${p.name}`).join(', ')
-        : 'no params'
     return (
       <span className="function-inline">
-        fn {name}({paramStr}) → {returnType}
+        fn {name}({formatFunctionParamsSummary(block)}) → {returnType}
       </span>
     )
   }
@@ -91,26 +82,43 @@ export function FunctionBlock({
           </div>
 
           <section className="function-block__panel function-block__panel--input function-block__inputs">
-            <span className="function-block__panel-head">INPUT</span>
-            <BlockSlot
-              slotTarget={slotTarget}
-              hint="Drop a Type block (optional)"
-              filled={!!signature}
-            >
-              {signature && renderChild
-                ? renderChild(signature, { compact: true })
-                : null}
-            </BlockSlot>
-            {derivedParams.length > 0 && (
-              <div className="function-block__params">
-                {derivedParams.map((param) => (
-                  <div key={param.id} className="function-block__param">
-                    <TypeBadge type={param.type} />
-                    <span className="function-block__param-name">{param.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <span className="function-block__panel-head">PARAMS</span>
+            <div className="function-block__param-rows">
+              {params.map((row) => (
+                <div key={row.id} className="function-block__param-row">
+                  <TypeSelect
+                    value={row.type}
+                    onChange={(type) =>
+                      ctx.updateFunctionParam(block.id, row.id, { type })
+                    }
+                  />
+                  <input
+                    type="text"
+                    className="function-block__param-name-input"
+                    value={row.name}
+                    onChange={(e) =>
+                      ctx.updateFunctionParam(block.id, row.id, { name: e.target.value })
+                    }
+                    aria-label="Parameter name"
+                  />
+                  <button
+                    type="button"
+                    className="function-block__param-remove"
+                    onClick={() => ctx.removeFunctionParam(block.id, row.id)}
+                    aria-label="Remove parameter"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="function-block__param-add"
+                onClick={() => ctx.addFunctionParam(block.id)}
+              >
+                + Add param
+              </button>
+            </div>
           </section>
 
           <section className="function-block__panel function-block__panel--body">

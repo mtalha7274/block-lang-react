@@ -16,6 +16,7 @@
 .toolbar__logo {
   font-size: 22px;
   color: var(--accent);
+  line-height: 1;
 }
 
 .toolbar__title {

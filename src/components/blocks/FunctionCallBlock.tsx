@@ -1,5 +1,6 @@
 import type { BlockNode, RenderChildOptions } from '../../types'
 import { typeColorMap } from '../../constants'
+import { resolveCallTarget } from '../../lib/program/callWire'
 import { useDragContext } from '../canvas/DragContext'
 import { PuzzleStrip } from './PuzzleStrip'
 import { TypeBadge, BlockSlot } from '../ui'
@@ -24,6 +25,7 @@ export function FunctionCallBlock({
 }: FunctionCallBlockProps) {
   const ctx = useDragContext()
   const { functionName, returnType, arguments: args } = block.data
+  const linkedFunction = resolveCallTarget(block, ctx.getBlocks())
   const isActive = activeBlockId === block.id
   const isReject = ctx.rejectBlockId === block.id
   const isDragging = ctx.draggingBlockId === block.id
@@ -63,6 +65,15 @@ export function FunctionCallBlock({
             onChange={(e) => ctx.updateFunctionCallName(block.id, e.target.value)}
             placeholder="function name"
           />
+          {linkedFunction && (
+            <button
+              type="button"
+              className="function-call-block__open-fn"
+              onClick={() => ctx.openBlockEditor(linkedFunction.id)}
+            >
+              Open {linkedFunction.data.name}
+            </button>
+          )}
           <span className="function-call-block__arrow">→</span>
           <TypeBadge type={returnType} />
           {!inStatementBody && (
@@ -83,6 +94,7 @@ export function FunctionCallBlock({
                     parentBlockId: block.id,
                     argPortId: arg.portId,
                   }}
+                  scopeConsumerId={block.id}
                   expectedType={arg.type}
                   hint={`${arg.type}`}
                   filled={!!arg.value}

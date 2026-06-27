@@ -54,6 +54,7 @@ export function ensureFunctionForCall(
       ...stub.data,
       name,
       returnType: call.data.returnType === 'void' ? 'number' : call.data.returnType,
+      params: [],
       body: [],
     },
   }

@@ -1,5 +1,6 @@
 import type { BlockKind, BlockNode, ValueType } from '../../types'
 import { typeColorMap } from '../../constants'
+import { inferExpressionResultType } from './expressionVariable'
 
 export interface MiniBlockView {
   label: string
@@ -63,7 +64,7 @@ function variableContract(): BlockContract<'variable'> {
 function expressionContract(): BlockContract<'expression'> {
   return {
     kind: 'expression',
-    getValueType: (block) => block.data.resultType,
+    getValueType: (block) => inferExpressionResultType(block.data.operator),
     canUseAsStatement: () => false,
     canCreateValueReference: () => true,
     getMiniBlockView: (block) => ({

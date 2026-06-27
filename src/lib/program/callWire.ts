@@ -1,5 +1,5 @@
 import type { BlockNode, ConnectionEdge, ProgramDocument } from '../../types'
-import { deriveTypeParams } from './typeParams'
+import { deriveFunctionParams } from './functionParams'
 
 export const CALL_OUT_PORT = 'call-out'
 export const CALL_IN_PORT = 'call-in'
@@ -77,7 +77,7 @@ export function resolveCallTarget(
   return byName ?? null
 }
 
-/** Block editor target: function calls open their linked function definition. */
+/** Linked function definition id for a function call (wire + fn editor button). */
 export function resolveBlockEditorTargetId(
   block: BlockNode,
   topLevelBlocks: BlockNode[],
@@ -106,7 +106,7 @@ export function linkFunctionCallToTarget(
     }
   }
 
-  const params = fn.data.signature ? deriveTypeParams(fn.data.signature) : []
+  const params = deriveFunctionParams(fn)
 
   return {
     ...call,

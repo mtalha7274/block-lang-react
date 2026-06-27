@@ -126,6 +126,14 @@ export function BlockRenderer({
         callOutPort={connections.some(
           (c) => c.purpose === 'wire' && c.from.blockId === block.id,
         )}
+        onOpenLinkedDefinition={
+          block.kind === 'functionCall'
+            ? () => {
+                const fnId = ctx.getEditorTargetBlockId(block.id)
+                if (fnId !== block.id) ctx.openBlockEditor(fnId)
+              }
+            : undefined
+        }
       />
     )
   }

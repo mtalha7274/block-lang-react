@@ -1,5 +1,5 @@
 import type { BlockNode, FunctionParameter, ProgramDocument } from '../../types'
-import { deriveTypeParams } from '../program/typeParams'
+import { deriveFunctionParams } from './functionParams'
 
 export interface ResolvedCallArg {
   name: string
@@ -27,9 +27,7 @@ export function resolveFunctionCall(
 
   if (!fn || fn.kind !== 'function') return null
 
-  const signatureParams: FunctionParameter[] = fn.data.signature
-    ? deriveTypeParams(fn.data.signature)
-    : []
+  const signatureParams: FunctionParameter[] = deriveFunctionParams(fn)
 
   if (call.data.arguments.length > 0) {
     return {

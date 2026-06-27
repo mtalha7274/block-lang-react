@@ -134,6 +134,10 @@ export const sampleProgram: ProgramDocument = {
       data: {
         name: 'add',
         returnType: 'number',
+        params: [
+          { id: 'param-a', name: 'a', type: 'number' },
+          { id: 'param-b', name: 'b', type: 'number' },
+        ],
         signature: {
           id: 'type-add-sig',
           kind: 'type',

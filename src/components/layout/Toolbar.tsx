@@ -38,7 +38,7 @@ export function Toolbar({
   return (
     <div className="toolbar">
       <div className="toolbar__brand">
-        <span className="toolbar__logo">⬡</span>
+        <span className="toolbar__logo" aria-hidden="true">⬡</span>
         <h1 className="toolbar__title">BlockLang</h1>
       </div>
 
