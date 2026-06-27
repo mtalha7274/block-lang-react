@@ -27,6 +27,20 @@ describe('expressionVariable', () => {
     expect(inferExpressionResultType('+')).toBe('number')
   })
 
+  it('preserves existing expression resultName when attaching to another value slot', () => {
+    const variable = createBlockFromKind('variable') as Extract<BlockNode, { kind: 'variable' }>
+    const expression = createBlockFromKind('expression') as Extract<BlockNode, { kind: 'expression' }>
+    expression.data.resultName = 'total'
+    const target = {
+      kind: 'variable-value' as const,
+      parentBlockId: variable.id,
+    }
+
+    const normalized = normalizeExpressionForSlot(expression, target, 'number', () => [variable])
+    expect(normalized.data.resultName).toBe('total')
+    expect(normalized.data.operator).toBe('+')
+  })
+
   it('picks default operators for value types', () => {
     expect(defaultOperatorForValueType('boolean')).toBe('==')
     expect(defaultOperatorForValueType('number')).toBe('+')

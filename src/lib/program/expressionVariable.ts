@@ -67,6 +67,7 @@ function collectBoundNames(blocks: BlockNode[]): Set<string> {
         break
       case 'function':
         if (block.data.signature) visit(block.data.signature)
+        block.data.params.forEach((param) => names.add(param.name))
         block.data.body.forEach(visit)
         break
       default:
@@ -119,14 +120,21 @@ export function normalizeExpressionForSlot(
   getBlocks: () => BlockNode[],
 ): Extract<BlockNode, { kind: 'expression' }> {
   let operator = block.data.operator
-  let resultType = inferExpressionResultType(operator)
+  let resultType = block.data.resultType ?? inferExpressionResultType(operator)
 
   if (expectedType && expectedType !== 'void' && resultType !== expectedType) {
     operator = defaultOperatorForValueType(expectedType)
     resultType = inferExpressionResultType(operator)
   }
 
-  const baseName = defaultResultNameBase(target)
+  const slotBase = defaultResultNameBase(target)
+  const existingName = block.data.resultName?.trim()
+  const baseName =
+    existingName &&
+    existingName !== 'result' &&
+    (slotBase === 'result' || existingName.startsWith(slotBase))
+      ? existingName
+      : slotBase
   const resultName = uniqueExpressionResultName(getBlocks(), baseName, block.id)
 
   return {

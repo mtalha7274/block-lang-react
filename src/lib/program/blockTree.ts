@@ -391,23 +391,9 @@ export function updateNestedVariableValue(
   parentId: string,
   value: BlockNode | undefined,
 ): BlockNode[] {
-  return blocks.map((block) => {
-    if (block.id === parentId && block.kind === 'variable') {
-      return { ...block, data: { ...block.data, value } }
-    }
-    if (block.kind === 'main') {
-      return {
-        ...block,
-        data: {
-          body: block.data.body.map((stmt) =>
-            stmt.id === parentId && stmt.kind === 'variable'
-              ? { ...stmt, data: { ...stmt.data, value } }
-              : stmt,
-          ),
-        },
-      }
-    }
-    return block
+  return updateBlockInTree(blocks, parentId, (block) => {
+    if (block.kind !== 'variable') return block
+    return { ...block, data: { ...block.data, value } }
   })
 }
 

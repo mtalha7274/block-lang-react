@@ -164,47 +164,6 @@ function compileAttach(
     return actions
   }
 
-  if (block.kind === 'for') {
-    const shell: BlockNode = {
-      ...clone(block),
-      data: { init: undefined, condition: undefined, increment: undefined, body: [] },
-    }
-    actions.push(dragDrop('for', shell, target))
-    actions.push(pause(PLAYBACK_PAUSE_AFTER_DROP_MS))
-    actions.push(openEditor(block.id))
-    actions.push(pause(PLAYBACK_PAUSE_AFTER_OPEN_MS))
-    if (block.data.init) {
-      actions.push(
-        ...compileSlotValue(block.data.init, {
-          kind: 'for-init',
-          parentBlockId: block.id,
-        }, doc),
-      )
-    }
-    if (block.data.condition) {
-      actions.push(
-        ...compileSlotValue(block.data.condition, {
-          kind: 'for-condition',
-          parentBlockId: block.id,
-        }, doc),
-      )
-    }
-    if (block.data.increment) {
-      actions.push(
-        ...compileSlotValue(block.data.increment, {
-          kind: 'for-increment',
-          parentBlockId: block.id,
-        }, doc),
-      )
-    }
-    if (block.data.body.length > 0) {
-      actions.push(
-        ...compileStatementBody(block.data.body, block.id, 'for', doc),
-      )
-    }
-    return actions
-  }
-
   if (block.kind === 'while') {
     const shell: BlockNode = {
       ...clone(block),

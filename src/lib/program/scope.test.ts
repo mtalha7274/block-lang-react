@@ -122,4 +122,17 @@ describe('scope', () => {
     const inScope = getInScopeValuesForConsumer(blocks, conditionExpr.id)
     expect(inScope.some((v) => v.blockId === countVar.id)).toBe(true)
   })
+
+  it('exposes earlier function body variables to variable value slots', () => {
+    const fn = createBlockFromKind('function') as Extract<BlockNode, { kind: 'function' }>
+    const countVar = createBlockFromKind('variable') as Extract<BlockNode, { kind: 'variable' }>
+    countVar.data.name = 'count'
+    const totalVar = createBlockFromKind('variable') as Extract<BlockNode, { kind: 'variable' }>
+    totalVar.data.name = 'total'
+    fn.data.body = [countVar, totalVar]
+    const blocks = [fn]
+
+    const inScope = getInScopeValuesForConsumer(blocks, totalVar.id)
+    expect(inScope.some((v) => v.blockId === countVar.id && v.label === 'count')).toBe(true)
+  })
 })
