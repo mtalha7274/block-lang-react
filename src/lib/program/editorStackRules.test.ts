@@ -49,4 +49,32 @@ describe('editorStackRules', () => {
     expect(toClose.has(primitive.id)).toBe(true)
     expect(toClose.has(print.id)).toBe(false)
   })
+
+  it('does not close the function editor being opened from a linked call', () => {
+    const main = createBlockFromKind('main')
+    const fn = createBlockFromKind('function')
+    const call = createBlockFromKind('functionCall')
+    const otherCall = createBlockFromKind('functionCall')
+    if (
+      main.kind !== 'main' ||
+      fn.kind !== 'function' ||
+      call.kind !== 'functionCall' ||
+      otherCall.kind !== 'functionCall'
+    ) {
+      throw new Error('unexpected block kind')
+    }
+
+    fn.data.name = 'helper'
+    call.data.functionName = 'helper'
+    call.data.targetFunctionId = fn.id
+    otherCall.data.functionName = 'helper'
+    otherCall.data.targetFunctionId = fn.id
+
+    let blocks: BlockNode[] = [main, fn]
+    blocks = appendToStatementBody(blocks, main.id, 'main', call)
+    blocks = appendToStatementBody(blocks, main.id, 'main', otherCall)
+
+    const toClose = getSiblingEditorIdsToClose(blocks, call.id)
+    expect(toClose.has(fn.id)).toBe(false)
+  })
 })

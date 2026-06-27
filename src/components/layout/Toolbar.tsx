@@ -38,7 +38,7 @@ export function Toolbar({
   return (
     <div className="toolbar">
       <div className="toolbar__brand">
-        <span className="toolbar__logo">⬡</span>
+        <img className="toolbar__logo" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={24} height={24} />
         <h1 className="toolbar__title">BlockLang</h1>
       </div>
 

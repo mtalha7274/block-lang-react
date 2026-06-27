@@ -49,6 +49,10 @@ export function getSiblingEditorIdsToClose(
   openingBlockId: string,
 ): Set<string> {
   const toClose = new Set<string>()
+  const openingBlock = findBlockInTree(blocks, openingBlockId)
+  const openingEditorId = openingBlock
+    ? resolveBlockEditorTargetId(openingBlock, blocks)
+    : openingBlockId
   const siblings = getSiblingStatementBlockIds(blocks, openingBlockId)
 
   for (const siblingId of siblings) {
@@ -65,5 +69,6 @@ export function getSiblingEditorIdsToClose(
     }
   }
 
+  toClose.delete(openingEditorId)
   return toClose
 }

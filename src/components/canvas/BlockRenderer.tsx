@@ -126,6 +126,11 @@ export function BlockRenderer({
         callOutPort={connections.some(
           (c) => c.purpose === 'wire' && c.from.blockId === block.id,
         )}
+        onCallOutOpen={
+          block.kind === 'functionCall'
+            ? () => ctx.openBlockEditor(ctx.getEditorTargetBlockId(block.id))
+            : undefined
+        }
       />
     )
   }

@@ -4,6 +4,7 @@ import { createBlockFromKind } from '../../constants/blockDefaults'
 import {
   getInScopeValuesForConsumer,
   resolveInScopeReferenceSource,
+  resolveScopeConsumerId,
   shouldUseInScopeReference,
 } from './scope'
 
@@ -63,5 +64,62 @@ describe('scope', () => {
 
     const inScope = getInScopeValuesForConsumer(blocks, ifBlock.id)
     expect(inScope.some((v) => v.blockId === flagVar.id && v.label.startsWith('flag'))).toBe(true)
+  })
+
+  it('exposes earlier function body variables inside an if branch expression', () => {
+    const fn = createBlockFromKind('function') as Extract<BlockNode, { kind: 'function' }>
+    const countVar = createBlockFromKind('variable') as Extract<BlockNode, { kind: 'variable' }>
+    countVar.data.name = 'count'
+    const ifBlock = createBlockFromKind('if')
+    const branchExpr = createBlockFromKind('expression') as Extract<BlockNode, { kind: 'expression' }>
+    if (ifBlock.kind === 'if') {
+      ifBlock.data.trueBranch = [branchExpr]
+    }
+    fn.data.body = [countVar, ifBlock]
+    const blocks = [fn]
+
+    const inScope = getInScopeValuesForConsumer(blocks, branchExpr.id)
+    expect(inScope.some((v) => v.blockId === countVar.id && v.label === 'count')).toBe(true)
+  })
+
+  it('exposes for-loop init to expressions in the loop body', () => {
+    const main = createBlockFromKind('main') as Extract<BlockNode, { kind: 'main' }>
+    const forBlock = createBlockFromKind('for')
+    const initVar = createBlockFromKind('variable') as Extract<BlockNode, { kind: 'variable' }>
+    initVar.data.name = 'i'
+    const bodyExpr = createBlockFromKind('expression') as Extract<BlockNode, { kind: 'expression' }>
+    if (forBlock.kind === 'for') {
+      forBlock.data.init = initVar
+      forBlock.data.body = [bodyExpr]
+    }
+    main.data.body = [forBlock]
+    const blocks = [main]
+
+    const inScope = getInScopeValuesForConsumer(blocks, bodyExpr.id)
+    expect(inScope.some((v) => v.blockId === initVar.id && v.label === 'i')).toBe(true)
+  })
+
+  it('resolves expression operand slots to the parent expression scope consumer', () => {
+    const main = createBlockFromKind('main') as Extract<BlockNode, { kind: 'main' }>
+    const countVar = createBlockFromKind('variable') as Extract<BlockNode, { kind: 'variable' }>
+    countVar.data.name = 'count'
+    const ifBlock = createBlockFromKind('if')
+    const conditionExpr = createBlockFromKind('expression') as Extract<BlockNode, { kind: 'expression' }>
+    if (ifBlock.kind === 'if') {
+      ifBlock.data.condition = conditionExpr
+    }
+    main.data.body = [countVar, ifBlock]
+    const blocks = [main]
+
+    expect(
+      resolveScopeConsumerId(blocks, {
+        kind: 'expression-operand',
+        parentBlockId: conditionExpr.id,
+        side: 'left',
+      }),
+    ).toBe(conditionExpr.id)
+
+    const inScope = getInScopeValuesForConsumer(blocks, conditionExpr.id)
+    expect(inScope.some((v) => v.blockId === countVar.id)).toBe(true)
   })
 })

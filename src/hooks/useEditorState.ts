@@ -40,7 +40,7 @@ import {
   updateWhileCondition,
 } from '../lib/program/blockTree'
 import { createDefaultPanelPositions } from '../lib/workspace/panelDefaults'
-import { getInScopeValuesForConsumer, isValueSourceBlock, resolveInScopeReferenceSource, shouldUseInScopeReference } from '../lib/program/scope'
+import { getInScopeValuesForConsumer, isValueSourceBlock, resolveInScopeReferenceSource, resolveScopeConsumerId, shouldUseInScopeReference } from '../lib/program/scope'
 import { getBlockValueType } from '../lib/program/blockContract'
 import {
   linkFunctionCallToTarget,
@@ -97,7 +97,7 @@ function assignReferenceToSlot(
     return { next: prev, accepted: false }
   }
 
-  const consumerId = target.parentBlockId
+  const consumerId = resolveScopeConsumerId(prev.blocks, target)
   const inScope = getInScopeValuesForConsumer(prev.blocks, consumerId)
   if (!inScope.some((v) => v.blockId === resolvedSourceId)) {
     return { next: prev, accepted: false }

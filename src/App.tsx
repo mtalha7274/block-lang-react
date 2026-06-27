@@ -137,7 +137,7 @@ function App() {
 
       setEditorStack((prev) => {
         const withoutSiblings = prev.filter((id) => !siblingEditorsToClose.has(id))
-        if (withoutSiblings.includes(editorBlockId)) return withoutSiblings
+        const withoutSelf = withoutSiblings.filter((id) => id !== editorBlockId)
 
         if (
           anchorEl &&
@@ -152,7 +152,7 @@ function App() {
           movePanel(panelId, pos.x, pos.y)
         }
 
-        return [...withoutSiblings, editorBlockId]
+        return [...withoutSelf, editorBlockId]
       })
 
       raisePanel(panelId)
@@ -466,7 +466,7 @@ function App() {
               />
             </FloatingPanel>
 
-            {editorStack.map((blockId) => {
+            {editorStack.map((blockId, stackIndex) => {
               const block = findBlock(blockId)
               if (!block) return null
               const panelId = `blockEditor-${blockId}`
@@ -476,6 +476,7 @@ function App() {
                   ? block.data.name
                   : (blockRegistry[block.kind]?.label ?? 'Block Editor')
               const lineNumber = getStatementLineNumber(program.blocks, blockId)
+              const stackZ = 30 + stackIndex * 10
               return (
                 <FloatingPanel
                   key={blockId}
@@ -488,11 +489,10 @@ function App() {
                   }}
                   onMove={movePanel}
                   minWidth={280}
-                  zIndex={panelZ.getZ(panelId, 25)}
+                  zIndex={panelZ.getZ(panelId, stackZ)}
                   workspaceContainerRef={workspaceContainerRef}
                   onFocus={() => raisePanel(panelId)}
                   onHeaderClose={() => closeBlockEditor(blockId)}
-                  onHeaderRemove={() => handleDetachNestedBlock(blockId)}
                 >
                   <BlockEditorPanel
                     block={block}

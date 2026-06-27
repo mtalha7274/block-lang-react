@@ -12,6 +12,7 @@ interface MinimizedBlockChipProps {
     e: React.PointerEvent,
     anchorEl: HTMLElement,
   ) => void
+  onCallOutOpen?: () => void
   isSelected?: boolean
   usageOutPort?: boolean
   usageInPortId?: string
@@ -36,6 +37,7 @@ export function MinimizedBlockChip({
   onRemove,
   onReferenceDragStart,
   onChipPointerDown,
+  onCallOutOpen,
   isSelected = false,
   usageOutPort = false,
   usageInPortId,
@@ -70,7 +72,17 @@ export function MinimizedBlockChip({
         <span className="usage-anchor usage-anchor--out" data-port-id="value-out" aria-hidden />
       )}
       {callOutPort && (
-        <span className="usage-anchor usage-anchor--out" data-port-id="call-out" aria-hidden />
+        <button
+          type="button"
+          className="usage-anchor usage-anchor--out"
+          data-port-id="call-out"
+          aria-label="Open function definition"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            onCallOutOpen?.()
+          }}
+        />
       )}
       <button
         type="button"
