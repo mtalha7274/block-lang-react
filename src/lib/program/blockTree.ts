@@ -258,19 +258,80 @@ export function updateBlockInTree(
               : undefined,
           },
         }
-      case 'for':
+      case 'expression':
+        if (block.data.left?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, left: updater(block.data.left) },
+          }
+        }
+        if (block.data.right?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, right: updater(block.data.right) },
+          }
+        }
         return {
           ...block,
           data: {
             ...block.data,
+            left: block.data.left
+              ? updateBlockInTree([block.data.left], blockId, updater)[0]
+              : undefined,
+            right: block.data.right
+              ? updateBlockInTree([block.data.right], blockId, updater)[0]
+              : undefined,
+          },
+        }
+      case 'for':
+        if (block.data.init?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, init: updater(block.data.init) },
+          }
+        }
+        if (block.data.condition?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, condition: updater(block.data.condition) },
+          }
+        }
+        if (block.data.increment?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, increment: updater(block.data.increment) },
+          }
+        }
+        return {
+          ...block,
+          data: {
+            ...block.data,
+            init: block.data.init
+              ? updateBlockInTree([block.data.init], blockId, updater)[0]
+              : undefined,
+            condition: block.data.condition
+              ? updateBlockInTree([block.data.condition], blockId, updater)[0]
+              : undefined,
+            increment: block.data.increment
+              ? updateBlockInTree([block.data.increment], blockId, updater)[0]
+              : undefined,
             body: updateBlockInTree(block.data.body, blockId, updater),
           },
         }
       case 'while':
+        if (block.data.condition?.id === blockId) {
+          return {
+            ...block,
+            data: { ...block.data, condition: updater(block.data.condition) },
+          }
+        }
         return {
           ...block,
           data: {
             ...block.data,
+            condition: block.data.condition
+              ? updateBlockInTree([block.data.condition], blockId, updater)[0]
+              : undefined,
             body: updateBlockInTree(block.data.body, blockId, updater),
           },
         }
@@ -388,11 +449,33 @@ function mapBlockNode(
             : undefined,
         },
       }
+    case 'expression':
+      return {
+        ...mapped,
+        data: {
+          ...mapped.data,
+          left: mapped.data.left
+            ? mapBlockNode(mapped.data.left, mapper)
+            : undefined,
+          right: mapped.data.right
+            ? mapBlockNode(mapped.data.right, mapper)
+            : undefined,
+        },
+      }
     case 'for':
       return {
         ...mapped,
         data: {
           ...mapped.data,
+          init: mapped.data.init
+            ? mapBlockNode(mapped.data.init, mapper)
+            : undefined,
+          condition: mapped.data.condition
+            ? mapBlockNode(mapped.data.condition, mapper)
+            : undefined,
+          increment: mapped.data.increment
+            ? mapBlockNode(mapped.data.increment, mapper)
+            : undefined,
           body: mapBlocksInTree(mapped.data.body, mapper),
         },
       }
@@ -401,6 +484,9 @@ function mapBlockNode(
         ...mapped,
         data: {
           ...mapped.data,
+          condition: mapped.data.condition
+            ? mapBlockNode(mapped.data.condition, mapper)
+            : undefined,
           body: mapBlocksInTree(mapped.data.body, mapper),
         },
       }

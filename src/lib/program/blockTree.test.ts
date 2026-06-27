@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BlockNode } from '../../types'
 import { createBlockFromKind } from '../../constants/blockDefaults'
-import { findBlockInTree, updateNestedVariableValue } from './blockTree'
+import { findBlockInTree, updateBlockInTree, updateNestedVariableValue } from './blockTree'
 
 describe('findBlockInTree', () => {
   it('finds primitives nested in expression operands', () => {
@@ -33,6 +33,27 @@ describe('findBlockInTree', () => {
 
     expect(findBlockInTree([main], init.id)?.kind).toBe('variable')
     expect(findBlockInTree([main], condition.id)?.kind).toBe('expression')
+  })
+
+  it('updates primitive values nested in expression operands', () => {
+    const main = createBlockFromKind('main')
+    const expression = createBlockFromKind('expression') as Extract<BlockNode, { kind: 'expression' }>
+    const left = createBlockFromKind('primitive') as Extract<BlockNode, { kind: 'primitive' }>
+    expression.data.left = left
+    if (main.kind === 'main') {
+      main.data.body = [expression]
+    }
+
+    const blocks = updateBlockInTree([main], left.id, (block) => {
+      if (block.kind !== 'primitive') return block
+      return { ...block, data: { ...block.data, value: 42 } }
+    })
+
+    const updated = findBlockInTree(blocks, left.id)
+    expect(updated?.kind).toBe('primitive')
+    if (updated?.kind === 'primitive') {
+      expect(updated.data.value).toBe(42)
+    }
   })
 })
 
