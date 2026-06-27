@@ -1,7 +1,7 @@
 import type { BlockNode, OperatorSymbol, ProgramDocument, ValueType } from '../../types'
 import { findBlockInTree } from '../program/blockTree'
 import { resolveFunctionCall } from '../program/resolveFunctionCall'
-import { deriveFunctionParams } from '../program/functionParams'
+import { deriveFunctionParams, findFunctionParamBySourceId } from '../program/functionParams'
 import { inferExpressionResultType } from '../program/expressionVariable'
 import type { Runtime, RuntimeValue } from './runtime'
 import { EmulationError } from './types'
@@ -117,6 +117,11 @@ export function evaluateExpression(
     }
 
     case 'valueRef': {
+      const paramRef = findFunctionParamBySourceId(doc.blocks, block.data.sourceBlockId)
+      if (paramRef) {
+        return runtime.get(paramRef.param.name).value
+      }
+
       const source = findBlockInTree(doc.blocks, block.data.sourceBlockId)
       if (!source) {
         throw new EmulationError(

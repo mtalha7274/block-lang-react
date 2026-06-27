@@ -5,12 +5,18 @@ import {
   getValueLabel,
 } from './blockContract'
 import { findBlockInTree, findBlockParent } from './blockTree'
+import { findEnclosingFunction } from './enclosingFunction'
+import {
+  deriveFunctionParams,
+  functionParamSourceId,
+  isFunctionParamSourceId,
+} from './functionParams'
 
 export interface InScopeValue {
   blockId: string
   label: string
   valueType: ValueType
-  kind: BlockNode['kind']
+  kind: BlockNode['kind'] | 'functionParam'
 }
 
 export function getValueTypeFromSource(block: BlockNode): ValueType | null {
@@ -218,6 +224,17 @@ export function getInScopeValuesForConsumer(
     mergeUniqueInScope(result, seen, initValues)
   }
 
+  const enclosingFn = findEnclosingFunction(blocks, consumerId)
+  if (enclosingFn) {
+    const paramValues = deriveFunctionParams(enclosingFn).map((param) => ({
+      blockId: functionParamSourceId(enclosingFn.id, param.id),
+      label: param.name,
+      valueType: param.type,
+      kind: 'functionParam' as const,
+    }))
+    mergeUniqueInScope(result, seen, paramValues)
+  }
+
   return result
 }
 
@@ -247,6 +264,12 @@ export function shouldUseInScopeReference(
   if (!isConsumerValueSlot(target)) return false
 
   const resolvedId = resolveInScopeReferenceSource(blocks, sourceBlockId, target)
+  if (isFunctionParamSourceId(resolvedId)) {
+    const consumerId = resolveScopeConsumerId(blocks, target)
+    const inScope = getInScopeValuesForConsumer(blocks, consumerId)
+    return inScope.some((value) => value.blockId === resolvedId)
+  }
+
   const source = findBlockInTree(blocks, resolvedId)
   if (!source || !isValueSourceBlock(source)) return false
 

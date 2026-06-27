@@ -48,6 +48,7 @@ import {
 import { syncCallsToFunction } from '../lib/program/functionParams'
 import { ensureFunctionForCall } from '../lib/program/ensureFunctionForCall'
 import {
+  createValueRefFromParam,
   createValueRefFromSource,
   getUsageInPortId,
   removeUsageConnectionAtPort,
@@ -93,10 +94,7 @@ function assignReferenceToSlot(
   target: SlotTarget,
 ): { next: ProgramDocument; accepted: boolean } {
   const resolvedSourceId = resolveInScopeReferenceSource(prev.blocks, sourceBlockId, target)
-  const source = findBlockInTree(prev.blocks, resolvedSourceId)
-  if (!source || !isValueSourceBlock(source)) {
-    return { next: prev, accepted: false }
-  }
+  const paramSource = findFunctionParamBySourceId(prev.blocks, resolvedSourceId)
 
   const consumerId = resolveScopeConsumerId(prev.blocks, target)
   const inScope = getInScopeValuesForConsumer(prev.blocks, consumerId)
@@ -104,7 +102,14 @@ function assignReferenceToSlot(
     return { next: prev, accepted: false }
   }
 
-  const valueRef = createValueRefFromSource(source)
+  const valueRef = paramSource
+    ? createValueRefFromParam(paramSource.fn.id, paramSource.param)
+    : (() => {
+        const source = findBlockInTree(prev.blocks, resolvedSourceId)
+        if (!source || !isValueSourceBlock(source)) return null
+        return createValueRefFromSource(source)
+      })()
+
   if (!valueRef || valueRef.kind !== 'valueRef') {
     return { next: prev, accepted: false }
   }

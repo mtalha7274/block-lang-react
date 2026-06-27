@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BlockNode } from '../../types'
 import { createBlockFromKind } from '../../constants/blockDefaults'
+import { functionParamSourceId } from './functionParams'
 import {
   getInScopeValuesForConsumer,
   resolveInScopeReferenceSource,
@@ -134,5 +135,41 @@ describe('scope', () => {
 
     const inScope = getInScopeValuesForConsumer(blocks, totalVar.id)
     expect(inScope.some((v) => v.blockId === countVar.id && v.label === 'count')).toBe(true)
+  })
+
+  it('exposes function params to statements inside the function body', () => {
+    const fn = createBlockFromKind('function') as Extract<BlockNode, { kind: 'function' }>
+    const paramRow = { id: 'param-a', name: 'amount', type: 'number' as const }
+    fn.data.params = [paramRow]
+    const ret = createBlockFromKind('return')
+    fn.data.body = [ret]
+    const blocks = [fn]
+
+    const inScope = getInScopeValuesForConsumer(blocks, ret.id)
+    expect(
+      inScope.some(
+        (v) =>
+          v.blockId === functionParamSourceId(fn.id, paramRow.id) &&
+          v.label === 'amount' &&
+          v.kind === 'functionParam',
+      ),
+    ).toBe(true)
+  })
+
+  it('allows linking a function param into a return value slot', () => {
+    const fn = createBlockFromKind('function') as Extract<BlockNode, { kind: 'function' }>
+    const paramRow = { id: 'param-b', name: 'value', type: 'number' as const }
+    fn.data.params = [paramRow]
+    const ret = createBlockFromKind('return')
+    fn.data.body = [ret]
+    const blocks = [fn]
+    const paramSourceId = functionParamSourceId(fn.id, paramRow.id)
+
+    expect(
+      shouldUseInScopeReference(blocks, paramSourceId, {
+        kind: 'return-value',
+        parentBlockId: ret.id,
+      }),
+    ).toBe(true)
   })
 })

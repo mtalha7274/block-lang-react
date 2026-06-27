@@ -2,6 +2,7 @@ import type { BlockNode } from '../../types'
 import { findBlockInTree } from '../program/blockTree'
 import type { CompileContext } from './compileContext'
 import type { CompileError } from './types'
+import { findFunctionParamBySourceId } from '../program/functionParams'
 import { resolveFunctionCall } from '../program/resolveFunctionCall'
 
 function formatPrimitive(block: Extract<BlockNode, { kind: 'primitive' }>): string {
@@ -69,6 +70,11 @@ export function emitExpression(
     }
 
     case 'valueRef': {
+      const paramRef = findFunctionParamBySourceId(ctx.doc.blocks, block.data.sourceBlockId)
+      if (paramRef) {
+        return ctx.sanitizeIdentifier(paramRef.param.name)
+      }
+
       const source = findBlockInTree(ctx.doc.blocks, block.data.sourceBlockId)
       if (!source) {
         errors.push({

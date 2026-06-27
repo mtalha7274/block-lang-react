@@ -1,5 +1,6 @@
-import type { BlockNode } from '../../types'
+import type { BlockNode, FunctionParameter } from '../../types'
 import { findBlockInTree, mapBlocksInTree } from './blockTree'
+import { findFunctionParamBySourceId, functionParamSourceId } from './functionParams'
 import { getLabelFromSource, getValueTypeFromSource } from './scope'
 
 let refCounter = 0
@@ -7,6 +8,21 @@ let refCounter = 0
 function nextRefId(): string {
   refCounter += 1
   return `valueRef-${refCounter}-${Date.now()}`
+}
+
+export function createValueRefFromParam(
+  fnId: string,
+  param: FunctionParameter,
+): BlockNode {
+  return {
+    id: nextRefId(),
+    kind: 'valueRef',
+    data: {
+      sourceBlockId: functionParamSourceId(fnId, param.id),
+      label: param.name,
+      valueType: param.type,
+    },
+  }
 }
 
 export function createValueRefFromSource(source: BlockNode): BlockNode | null {
@@ -117,6 +133,22 @@ export function removeUsageConnectionAtPort(
 export function syncValueRefLabels(blocks: BlockNode[]): BlockNode[] {
   return mapBlocksInTree(blocks, (block) => {
     if (block.kind !== 'valueRef') return block
+
+    const paramRef = findFunctionParamBySourceId(blocks, block.data.sourceBlockId)
+    if (paramRef) {
+      const hadError = block.visual?.state === 'error'
+      return {
+        ...block,
+        data: {
+          ...block.data,
+          label: paramRef.param.name,
+          valueType: paramRef.param.type,
+        },
+        visual: hadError
+          ? { ...block.visual, state: 'default', errorMessage: undefined }
+          : block.visual,
+      }
+    }
 
     const source = findBlockInTree(blocks, block.data.sourceBlockId)
     if (!source) {

@@ -1,10 +1,46 @@
 import type { BlockNode, FunctionParameter } from '../../types'
 import { deriveTypeParams } from './typeParams'
 import { linkFunctionCallToTarget } from './callWire'
-import { mapBlocksInTree } from './blockTree'
+import { findBlockInTree, mapBlocksInTree } from './blockTree'
 
 type FunctionBlock = Extract<BlockNode, { kind: 'function' }>
 type FunctionCallBlock = Extract<BlockNode, { kind: 'functionCall' }>
+
+const PARAM_SOURCE_PREFIX = 'param:'
+
+export function functionParamSourceId(fnId: string, paramId: string): string {
+  return `${PARAM_SOURCE_PREFIX}${fnId}:${paramId}`
+}
+
+export function parseFunctionParamSourceId(
+  sourceId: string,
+): { fnId: string; paramId: string } | null {
+  if (!sourceId.startsWith(PARAM_SOURCE_PREFIX)) return null
+  const rest = sourceId.slice(PARAM_SOURCE_PREFIX.length)
+  const colon = rest.indexOf(':')
+  if (colon === -1) return null
+  return { fnId: rest.slice(0, colon), paramId: rest.slice(colon + 1) }
+}
+
+export function isFunctionParamSourceId(sourceId: string): boolean {
+  return parseFunctionParamSourceId(sourceId) !== null
+}
+
+export function findFunctionParamBySourceId(
+  blocks: BlockNode[],
+  sourceId: string,
+): { fn: FunctionBlock; param: FunctionParameter } | null {
+  const parsed = parseFunctionParamSourceId(sourceId)
+  if (!parsed) return null
+
+  const fn = findBlockInTree(blocks, parsed.fnId)
+  if (!fn || fn.kind !== 'function') return null
+
+  const param = deriveFunctionParams(fn).find((p) => p.id === parsed.paramId)
+  if (!param) return null
+
+  return { fn, param }
+}
 
 export function deriveFunctionParams(fn: FunctionBlock): FunctionParameter[] {
   const inlineParams = fn.data.params ?? []

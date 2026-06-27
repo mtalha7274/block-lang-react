@@ -5,7 +5,8 @@ import {
   canAttachPaletteKindToSlot,
   slotRejectMessage,
 } from '../lib/validation/slotRules'
-import { createValueRefFromSource } from '../lib/program/valueRef'
+import { createValueRefFromParam, createValueRefFromSource } from '../lib/program/valueRef'
+import { findFunctionParamBySourceId } from '../lib/program/functionParams'
 import { getInScopeValuesForConsumer, isValueSourceBlock, resolveScopeConsumerId } from '../lib/program/scope'
 
 import type { HoverPreviewSize } from '../components/canvas/DragContext'
@@ -47,14 +48,20 @@ function evaluateReferenceSlotValidity(
   findBlock: (id: string) => BlockNode | undefined,
   getBlocks: () => BlockNode[],
 ): boolean {
-  const source = findBlock(sourceBlockId)
-  if (!source || !isValueSourceBlock(source)) return false
+  const blocks = getBlocks()
+  const paramSource = findFunctionParamBySourceId(blocks, sourceBlockId)
+  const valueRef = paramSource
+    ? createValueRefFromParam(paramSource.fn.id, paramSource.param)
+    : (() => {
+        const source = findBlock(sourceBlockId)
+        if (!source || !isValueSourceBlock(source)) return null
+        return createValueRefFromSource(source)
+      })()
 
-  const valueRef = createValueRefFromSource(source)
   if (!valueRef) return false
 
-  const consumerId = resolveScopeConsumerId(getBlocks(), target)
-  const inScope = getInScopeValuesForConsumer(getBlocks(), consumerId)
+  const consumerId = resolveScopeConsumerId(blocks, target)
+  const inScope = getInScopeValuesForConsumer(blocks, consumerId)
   if (!inScope.some((v) => v.blockId === sourceBlockId)) return false
 
   return canAttachBlockToSlot(target, valueRef, findBlock, {}, getBlocks)
