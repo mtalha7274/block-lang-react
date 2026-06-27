@@ -45,7 +45,7 @@ import { getBlockValueType } from '../lib/program/blockContract'
 import {
   linkFunctionCallToTarget,
 } from '../lib/program/callWire'
-import { syncCallsToFunction } from '../lib/program/functionParams'
+import { findFunctionParamBySourceId, syncCallsToFunction } from '../lib/program/functionParams'
 import { ensureFunctionForCall } from '../lib/program/ensureFunctionForCall'
 import {
   createValueRefFromParam,
