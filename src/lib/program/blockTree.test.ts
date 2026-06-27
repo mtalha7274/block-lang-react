@@ -1,7 +1,40 @@
 import { describe, expect, it } from 'vitest'
 import type { BlockNode } from '../../types'
 import { createBlockFromKind } from '../../constants/blockDefaults'
-import { updateNestedVariableValue } from './blockTree'
+import { findBlockInTree, updateNestedVariableValue } from './blockTree'
+
+describe('findBlockInTree', () => {
+  it('finds primitives nested in expression operands', () => {
+    const main = createBlockFromKind('main')
+    const expression = createBlockFromKind('expression') as Extract<BlockNode, { kind: 'expression' }>
+    const left = createBlockFromKind('primitive')
+    const right = createBlockFromKind('primitive')
+    expression.data.left = left
+    expression.data.right = right
+    if (main.kind === 'main') {
+      main.data.body = [expression]
+    }
+
+    expect(findBlockInTree([main], left.id)?.kind).toBe('primitive')
+    expect(findBlockInTree([main], right.id)?.kind).toBe('primitive')
+    expect(findBlockInTree([main], expression.id)?.kind).toBe('expression')
+  })
+
+  it('finds blocks nested in for-loop slots', () => {
+    const main = createBlockFromKind('main')
+    const forBlock = createBlockFromKind('for') as Extract<BlockNode, { kind: 'for' }>
+    const init = createBlockFromKind('variable')
+    const condition = createBlockFromKind('expression')
+    forBlock.data.init = init
+    forBlock.data.condition = condition
+    if (main.kind === 'main') {
+      main.data.body = [forBlock]
+    }
+
+    expect(findBlockInTree([main], init.id)?.kind).toBe('variable')
+    expect(findBlockInTree([main], condition.id)?.kind).toBe('expression')
+  })
+})
 
 describe('updateNestedVariableValue', () => {
   it('updates variable values nested inside function bodies', () => {

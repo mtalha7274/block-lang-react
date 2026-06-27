@@ -54,6 +54,8 @@ export function findBlockInTree(
     if (block.kind === 'type') {
       for (const v of block.data.variables) {
         if (v.id === blockId) return v
+        const nested = findBlockInTree([v], blockId)
+        if (nested) return nested
       }
     }
     if (block.kind === 'if') {
@@ -69,11 +71,43 @@ export function findBlockInTree(
         if (inFalse) return inFalse
       }
     }
+    if (block.kind === 'expression') {
+      if (block.data.left) {
+        if (block.data.left.id === blockId) return block.data.left
+        const inLeft = findBlockInTree([block.data.left], blockId)
+        if (inLeft) return inLeft
+      }
+      if (block.data.right) {
+        if (block.data.right.id === blockId) return block.data.right
+        const inRight = findBlockInTree([block.data.right], blockId)
+        if (inRight) return inRight
+      }
+    }
     if (block.kind === 'for') {
+      if (block.data.init) {
+        if (block.data.init.id === blockId) return block.data.init
+        const inInit = findBlockInTree([block.data.init], blockId)
+        if (inInit) return inInit
+      }
+      if (block.data.condition) {
+        if (block.data.condition.id === blockId) return block.data.condition
+        const inCond = findBlockInTree([block.data.condition], blockId)
+        if (inCond) return inCond
+      }
+      if (block.data.increment) {
+        if (block.data.increment.id === blockId) return block.data.increment
+        const inInc = findBlockInTree([block.data.increment], blockId)
+        if (inInc) return inInc
+      }
       const found = findBlockInTree(block.data.body, blockId)
       if (found) return found
     }
     if (block.kind === 'while') {
+      if (block.data.condition) {
+        if (block.data.condition.id === blockId) return block.data.condition
+        const inCond = findBlockInTree([block.data.condition], blockId)
+        if (inCond) return inCond
+      }
       const found = findBlockInTree(block.data.body, blockId)
       if (found) return found
     }
