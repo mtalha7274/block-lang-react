@@ -40,7 +40,7 @@ import {
   updateWhileCondition,
 } from '../lib/program/blockTree'
 import { createDefaultPanelPositions } from '../lib/workspace/panelDefaults'
-import { getInScopeValuesForConsumer, isValueSourceBlock, resolveInScopeReferenceSource, resolveScopeConsumerId, shouldUseInScopeReference } from '../lib/program/scope'
+import { getInScopeValuesForConsumer, resolveInScopeReferenceSource, resolveScopeConsumerId, shouldUseInScopeReference } from '../lib/program/scope'
 import { getBlockValueType } from '../lib/program/blockContract'
 import {
   linkFunctionCallToTarget,

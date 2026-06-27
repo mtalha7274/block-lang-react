@@ -1,6 +1,6 @@
 import type { BlockNode, FunctionParameter } from '../../types'
 import { findBlockInTree, mapBlocksInTree } from './blockTree'
-import { findFunctionParamBySourceId, functionParamSourceId } from './functionParams'
+import { findFunctionParamBySourceId } from './functionParams'
 import { getLabelFromSource, getValueTypeFromSource } from './scope'
 
 let refCounter = 0
@@ -42,7 +42,7 @@ export function createInScopeValueBlock(
 }
 
 export function createValueRefFromParam(
-  fnId: string,
+  _fnId: string,
   param: FunctionParameter,
 ): BlockNode {
   return createVariableNameBlock(param.name, param.type)
