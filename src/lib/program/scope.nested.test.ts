@@ -80,4 +80,18 @@ describe('scope nested in control flow', () => {
       inScope.some((v) => v.blockId === functionParamSourceId(fn.id, paramRow.id)),
     ).toBe(true)
   })
+
+  it('exposes main body variables declared after an if to the if branch', () => {
+    const main = createBlockFromKind('main') as Extract<BlockNode, { kind: 'main' }>
+    const ifBlock = createBlockFromKind('if')
+    const branchExpr = createBlockFromKind('expression')
+    const totalVar = createBlockFromKind('variable') as Extract<BlockNode, { kind: 'variable' }>
+    totalVar.data.name = 'total'
+    if (ifBlock.kind === 'if') ifBlock.data.trueBranch = [branchExpr]
+    main.data.body = [ifBlock, totalVar]
+    const blocks = [main]
+
+    const inScope = getInScopeValuesForConsumer(blocks, branchExpr.id)
+    expect(inScope.some((v) => v.blockId === totalVar.id && v.label === 'total')).toBe(true)
+  })
 })

@@ -10,19 +10,42 @@ function nextRefId(): string {
   return `valueRef-${refCounter}-${Date.now()}`
 }
 
+export function createVariableNameBlock(
+  name: string,
+  valueType: import('../../types').ValueType,
+): BlockNode {
+  return {
+    id: nextRefId(),
+    kind: 'variable',
+    data: { name, valueType },
+  }
+}
+
+export function createInScopeValueBlock(
+  blocks: BlockNode[],
+  sourceId: string,
+): BlockNode | null {
+  const paramSource = findFunctionParamBySourceId(blocks, sourceId)
+  if (paramSource) {
+    return createVariableNameBlock(paramSource.param.name, paramSource.param.type)
+  }
+
+  const source = findBlockInTree(blocks, sourceId)
+  if (!source) return null
+
+  if (source.kind === 'variable') {
+    return createVariableNameBlock(source.data.name, source.data.valueType)
+  }
+
+  if (!getValueTypeFromSource(source) || !getLabelFromSource(source)) return null
+  return createValueRefFromSource(source)
+}
+
 export function createValueRefFromParam(
   fnId: string,
   param: FunctionParameter,
 ): BlockNode {
-  return {
-    id: nextRefId(),
-    kind: 'valueRef',
-    data: {
-      sourceBlockId: functionParamSourceId(fnId, param.id),
-      label: param.name,
-      valueType: param.type,
-    },
-  }
+  return createVariableNameBlock(param.name, param.type)
 }
 
 export function createValueRefFromSource(source: BlockNode): BlockNode | null {

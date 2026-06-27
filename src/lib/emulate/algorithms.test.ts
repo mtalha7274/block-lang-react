@@ -394,4 +394,58 @@ describe('BLOCK_RULES compliance via emulation', () => {
     expect(getVarNumber(result, 'a')).toBe(1)
     expect(getVarNumber(result, 'b')).toBe(99)
   })
+
+  it('mutates function params inside an if branch', () => {
+    const doubleFn = func(
+      'double',
+      [{ id: 'p-x', name: 'x', type: 'number' }],
+      'number',
+      [
+        ifBlock(expr('>', varRef('x'), num(0), '', 'boolean'), [
+          reassign('x', expr('*', varRef('x'), num(2))),
+        ]),
+        ret(varRef('x')),
+      ],
+      'func-double',
+    )
+    const doc = program(
+      main([
+        variable(
+          'result',
+          call('double', 'func-double', [{ name: 'x', type: 'number', value: num(3) }]),
+        ),
+      ]),
+      [doubleFn],
+    )
+    const result = runProgram(doc)
+    expect(result.status).toBe('success')
+    expect(getVarNumber(result, 'result')).toBe(6)
+  })
+
+  it('mutates function locals inside a while body', () => {
+    const bumpFn = func(
+      'bump',
+      [{ id: 'p-n', name: 'n', type: 'number' }],
+      'number',
+      [
+        whileLoop(expr('>', varRef('n'), num(0), '', 'boolean'), [
+          reassign('n', expr('-', varRef('n'), num(1))),
+        ]),
+        ret(varRef('n')),
+      ],
+      'func-bump',
+    )
+    const doc = program(
+      main([
+        variable(
+          'left',
+          call('bump', 'func-bump', [{ name: 'n', type: 'number', value: num(3) }]),
+        ),
+      ]),
+      [bumpFn],
+    )
+    const result = runProgram(doc)
+    expect(result.status).toBe('success')
+    expect(getVarNumber(result, 'left')).toBe(0)
+  })
 })

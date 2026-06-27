@@ -178,11 +178,12 @@ function evaluateAndBindValue(
   block: BlockNode,
   runtime: Runtime,
   doc: ProgramDocument,
+  inFunction = false,
 ): RuntimeValue {
   const value = evaluateExpression(block, runtime, doc)
   if (block.kind === 'expression' && block.data.resultName) {
     const resultType = inferExpressionResultType(block.data.operator)
-    runtime.set(block.data.resultName, value, resultType)
+    runtime.set(block.data.resultName, value, resultType, inFunction)
   }
   return value
 }
@@ -206,12 +207,12 @@ export function executeStatement(
     case 'variable': {
       const { name, valueType, value } = block.data
       if (!value) {
-        runtime.set(name, defaultForType(valueType), valueType)
+        runtime.set(name, defaultForType(valueType), valueType, inFunction)
         return undefined
       }
-      const val = evaluateAndBindValue(value, runtime, doc)
+      const val = evaluateAndBindValue(value, runtime, doc, inFunction)
       assertType(val, valueType, `Variable ${name}`)
-      runtime.set(name, val, valueType)
+      runtime.set(name, val, valueType, inFunction)
       return undefined
     }
 
@@ -222,6 +223,7 @@ export function executeStatement(
           block.data.resultName,
           val,
           inferExpressionResultType(block.data.operator),
+          inFunction,
         )
       }
       return undefined
@@ -236,7 +238,7 @@ export function executeStatement(
       if (!block.data.value) {
         throw new EmulationError('Print block missing value', block.id)
       }
-      const val = evaluateAndBindValue(block.data.value, runtime, doc)
+      const val = evaluateAndBindValue(block.data.value, runtime, doc, inFunction)
       runtime.appendOutput(block.id, runtime.formatValue(val))
       return undefined
     }
@@ -246,7 +248,7 @@ export function executeStatement(
         throw new EmulationError('Return outside function', block.id)
       }
       if (block.data.value) {
-        return evaluateAndBindValue(block.data.value, runtime, doc)
+        return evaluateAndBindValue(block.data.value, runtime, doc, inFunction)
       }
       return undefined
     }
@@ -255,7 +257,7 @@ export function executeStatement(
       if (!block.data.condition) {
         throw new EmulationError('If block missing condition', block.id)
       }
-      const cond = evaluateAndBindValue(block.data.condition, runtime, doc)
+      const cond = evaluateAndBindValue(block.data.condition, runtime, doc, inFunction)
       let branchResult: RuntimeValue | undefined
       if (cond) {
         branchResult = executeBlockList(block.data.trueBranch, runtime, doc, inFunction)
@@ -272,13 +274,13 @@ export function executeStatement(
       }
       while (true) {
         if (block.data.condition) {
-          const cond = evaluateAndBindValue(block.data.condition, runtime, doc)
+          const cond = evaluateAndBindValue(block.data.condition, runtime, doc, inFunction)
           if (!cond) break
         }
         const bodyResult = executeBlockList(block.data.body, runtime, doc, inFunction)
         if (bodyResult !== undefined && inFunction) return bodyResult
         if (block.data.increment) {
-          applyForIncrement(block.data.increment, runtime, doc)
+          applyForIncrement(block.data.increment, runtime, doc, inFunction)
         }
       }
       return undefined
@@ -288,7 +290,7 @@ export function executeStatement(
       if (!block.data.condition) {
         throw new EmulationError('While block missing condition', block.id)
       }
-      while (evaluateAndBindValue(block.data.condition, runtime, doc)) {
+      while (evaluateAndBindValue(block.data.condition, runtime, doc, inFunction)) {
         const bodyResult = executeBlockList(block.data.body, runtime, doc, inFunction)
         if (bodyResult !== undefined && inFunction) return bodyResult
       }
@@ -317,10 +319,16 @@ function applyForIncrement(
   block: BlockNode,
   runtime: Runtime,
   doc: ProgramDocument,
+  inFunction: boolean,
 ): void {
   if (block.kind === 'expression' && block.data.resultName) {
     const val = evaluateExpression(block, runtime, doc)
-    runtime.set(block.data.resultName, val, inferExpressionResultType(block.data.operator))
+    runtime.set(
+      block.data.resultName,
+      val,
+      inferExpressionResultType(block.data.operator),
+      inFunction,
+    )
   }
 }
 

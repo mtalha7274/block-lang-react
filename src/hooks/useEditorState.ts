@@ -45,11 +45,10 @@ import { getBlockValueType } from '../lib/program/blockContract'
 import {
   linkFunctionCallToTarget,
 } from '../lib/program/callWire'
-import { findFunctionParamBySourceId, syncCallsToFunction } from '../lib/program/functionParams'
+import { syncCallsToFunction } from '../lib/program/functionParams'
 import { ensureFunctionForCall } from '../lib/program/ensureFunctionForCall'
 import {
-  createValueRefFromParam,
-  createValueRefFromSource,
+  createInScopeValueBlock,
   getUsageInPortId,
   removeUsageConnectionAtPort,
   removeUsageConnectionsForBlock,
@@ -73,19 +72,25 @@ function applyProgramUpdate(
   }
 }
 
-function slotAcceptsReference(
+function slotAcceptsInScopeBlock(
   target: SlotTarget,
-  valueRef: BlockNode,
+  attached: BlockNode,
   blocks: BlockNode[],
 ): boolean {
-  if (valueRef.kind !== 'valueRef') return false
+  if (attached.kind !== 'valueRef' && attached.kind !== 'variable') return false
   return canAttachBlockToSlot(
     target,
-    valueRef,
+    attached,
     (id) => findBlockInTree(blocks, id),
     {},
     () => blocks,
   )
+}
+
+function attachedBlockValueType(block: BlockNode): ValueType | null {
+  if (block.kind === 'valueRef') return block.data.valueType
+  if (block.kind === 'variable') return block.data.valueType
+  return getBlockValueType(block)
 }
 
 function assignReferenceToSlot(
@@ -94,7 +99,7 @@ function assignReferenceToSlot(
   target: SlotTarget,
 ): { next: ProgramDocument; accepted: boolean } {
   const resolvedSourceId = resolveInScopeReferenceSource(prev.blocks, sourceBlockId, target)
-  const paramSource = findFunctionParamBySourceId(prev.blocks, resolvedSourceId)
+  const attached = createInScopeValueBlock(prev.blocks, resolvedSourceId)
 
   const consumerId = resolveScopeConsumerId(prev.blocks, target)
   const inScope = getInScopeValuesForConsumer(prev.blocks, consumerId)
@@ -102,18 +107,12 @@ function assignReferenceToSlot(
     return { next: prev, accepted: false }
   }
 
-  const valueRef = paramSource
-    ? createValueRefFromParam(paramSource.fn.id, paramSource.param)
-    : (() => {
-        const source = findBlockInTree(prev.blocks, resolvedSourceId)
-        if (!source || !isValueSourceBlock(source)) return null
-        return createValueRefFromSource(source)
-      })()
-
-  if (!valueRef || valueRef.kind !== 'valueRef') {
+  if (!attached || !slotAcceptsInScopeBlock(target, attached, prev.blocks)) {
     return { next: prev, accepted: false }
   }
-  if (!slotAcceptsReference(target, valueRef, prev.blocks)) {
+
+  const attachedType = attachedBlockValueType(attached)
+  if (!attachedType) {
     return { next: prev, accepted: false }
   }
 
@@ -126,25 +125,25 @@ function assignReferenceToSlot(
   )
 
   if (target.kind === 'print-value') {
-    blocks = updatePrintValue(blocks, consumerId, valueRef)
+    blocks = updatePrintValue(blocks, consumerId, attached)
   } else if (target.kind === 'return-value') {
-    blocks = updateReturnValue(blocks, consumerId, valueRef)
+    blocks = updateReturnValue(blocks, consumerId, attached)
   } else if (target.kind === 'if-condition') {
-    blocks = updateIfCondition(blocks, consumerId, valueRef)
+    blocks = updateIfCondition(blocks, consumerId, attached)
   } else if (target.kind === 'variable-value') {
-    blocks = updateNestedVariableValue(blocks, consumerId, valueRef)
+    blocks = updateNestedVariableValue(blocks, consumerId, attached)
   } else if (target.kind === 'call-arg') {
-    blocks = updateCallArgValue(blocks, consumerId, target.argPortId, valueRef)
+    blocks = updateCallArgValue(blocks, consumerId, target.argPortId, attached)
   } else if (target.kind === 'expression-operand') {
-    blocks = updateExpressionOperand(blocks, consumerId, target.side, valueRef)
+    blocks = updateExpressionOperand(blocks, consumerId, target.side, attached)
   } else if (target.kind === 'for-init') {
-    blocks = updateForInit(blocks, consumerId, valueRef)
+    blocks = updateForInit(blocks, consumerId, attached)
   } else if (target.kind === 'for-condition') {
-    blocks = updateForCondition(blocks, consumerId, valueRef)
+    blocks = updateForCondition(blocks, consumerId, attached)
   } else if (target.kind === 'for-increment') {
-    blocks = updateForIncrement(blocks, consumerId, valueRef)
+    blocks = updateForIncrement(blocks, consumerId, attached)
   } else if (target.kind === 'while-condition') {
-    blocks = updateWhileCondition(blocks, consumerId, valueRef)
+    blocks = updateWhileCondition(blocks, consumerId, attached)
   } else {
     return { next: prev, accepted: false }
   }
@@ -154,7 +153,7 @@ function assignReferenceToSlot(
     resolvedSourceId,
     consumerId,
     inPortId,
-    valueRef.data.valueType,
+    attachedType,
   )
 
   return {

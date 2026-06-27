@@ -170,14 +170,13 @@ function mergeUniqueInScope(
   }
 }
 
-function isInsideNestedControlBodyInFunction(
+function isInsideNestedControlBody(
   blocks: BlockNode[],
   consumerId: string,
-  fnId: string,
 ): boolean {
   let walkId: string | null = consumerId
 
-  while (walkId && walkId !== fnId) {
+  while (walkId) {
     const parent = findBlockParent(blocks, walkId)
     if (!parent) return false
 
@@ -199,11 +198,31 @@ function isInsideNestedControlBodyInFunction(
   return false
 }
 
-function collectAllFunctionBodyValueSources(
-  fn: Extract<BlockNode, { kind: 'function' }>,
+function findEnclosingBodyOwner(
+  blocks: BlockNode[],
+  consumerId: string,
+): Extract<BlockNode, { kind: 'main' | 'function' }> | null {
+  let walkId: string | null = consumerId
+
+  while (walkId) {
+    const block = findBlockInTree(blocks, walkId)
+    if (block?.kind === 'main' || block?.kind === 'function') {
+      return block
+    }
+
+    const parent = findBlockParent(blocks, walkId)
+    if (!parent) break
+    walkId = parent.parentBlockId
+  }
+
+  return null
+}
+
+function collectAllBodyOwnerValueSources(
+  owner: Extract<BlockNode, { kind: 'main' | 'function' }>,
 ): InScopeValue[] {
   const result: InScopeValue[] = []
-  for (const stmt of fn.data.body) {
+  for (const stmt of owner.data.body) {
     collectValueSourcesFromStatement(stmt, result)
   }
   return result
@@ -277,9 +296,15 @@ export function getInScopeValuesForConsumer(
   const enclosingFn = findEnclosingFunction(blocks, consumerId)
   if (enclosingFn) {
     mergeUniqueInScope(result, seen, collectFunctionParamValues(enclosingFn))
+  }
 
-    if (isInsideNestedControlBodyInFunction(blocks, consumerId, enclosingFn.id)) {
-      mergeUniqueInScope(result, seen, collectAllFunctionBodyValueSources(enclosingFn))
+  if (isInsideNestedControlBody(blocks, consumerId)) {
+    const owner = findEnclosingBodyOwner(blocks, consumerId)
+    if (owner) {
+      mergeUniqueInScope(result, seen, collectAllBodyOwnerValueSources(owner))
+      if (owner.kind === 'function') {
+        mergeUniqueInScope(result, seen, collectFunctionParamValues(owner))
+      }
     }
   }
 
