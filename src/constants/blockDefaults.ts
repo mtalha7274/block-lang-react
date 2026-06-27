@@ -74,6 +74,7 @@ export function createBlockFromKind(kind: BlockKind): BlockNode {
         data: {
           name: 'myFunc',
           returnType: 'number',
+          params: [],
           body: [],
         },
       }

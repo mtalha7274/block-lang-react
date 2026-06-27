@@ -1,7 +1,7 @@
 import type { BlockNode, OperatorSymbol, ProgramDocument, ValueType } from '../../types'
 import { findBlockInTree } from '../program/blockTree'
 import { resolveFunctionCall } from '../program/resolveFunctionCall'
-import { deriveTypeParams } from '../program/typeParams'
+import { deriveFunctionParams } from '../program/functionParams'
 import { inferExpressionResultType } from '../program/expressionVariable'
 import type { Runtime, RuntimeValue } from './runtime'
 import { EmulationError } from './types'
@@ -138,7 +138,7 @@ function callFunction(
   runtime: Runtime,
   doc: ProgramDocument,
 ): RuntimeValue {
-  const params = fn.data.signature ? deriveTypeParams(fn.data.signature) : []
+  const params = deriveFunctionParams(fn)
   const locals: Record<string, import('./runtime').RuntimeEntry> = {}
   params.forEach((p, i) => {
     const val = argValues[i] ?? 0

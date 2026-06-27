@@ -1,7 +1,7 @@
 import type { BlockNode } from '../../types'
 import type { CompileContext } from './compileContext'
 import type { CompileError } from './types'
-import { deriveTypeParams } from '../program/typeParams'
+import { deriveFunctionParams } from '../program/functionParams'
 import { emitExpression } from './emitExpression'
 import { emitBlock } from './emitBlock'
 
@@ -173,9 +173,7 @@ export function emitFunction(
   errors: CompileError[],
 ): string[] {
   const name = ctx.sanitizeIdentifier(block.data.name)
-  const params = block.data.signature
-    ? deriveTypeParams(block.data.signature)
-    : []
+  const params = deriveFunctionParams(block)
   const paramStr = params.map((p) => `${p.name}: ${p.type}`).join(', ')
   const lines: string[] = [
     `function ${name}(${paramStr}): ${block.data.returnType} {`,

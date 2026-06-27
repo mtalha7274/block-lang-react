@@ -1,5 +1,5 @@
 import type { BlockNode, ConnectionEdge, ProgramDocument } from '../../types'
-import { deriveTypeParams } from './typeParams'
+import { deriveFunctionParams } from './functionParams'
 
 export const CALL_OUT_PORT = 'call-out'
 export const CALL_IN_PORT = 'call-in'
@@ -106,7 +106,7 @@ export function linkFunctionCallToTarget(
     }
   }
 
-  const params = fn.data.signature ? deriveTypeParams(fn.data.signature) : []
+  const params = deriveFunctionParams(fn)
 
   return {
     ...call,

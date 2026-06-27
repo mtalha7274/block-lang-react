@@ -162,7 +162,7 @@ export function func(
     data: {
       name,
       returnType,
-      signature: typeSignature(params),
+      params: params.map((p) => ({ id: p.id, name: p.name, type: p.type })),
       body,
     },
   }

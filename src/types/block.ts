@@ -111,6 +111,8 @@ export interface FunctionParameter {
 export interface FunctionBlockData {
   name: string
   returnType: ValueType
+  params: TypeParamRow[]
+  /** @deprecated Legacy programs may still attach a Type block here. */
   signature?: BlockNode
   body: BlockNode[]
 }

@@ -20,7 +20,7 @@ import { runProgram } from './lib/emulate'
 import { ReferenceDragGhost } from './components/blocks/ReferenceDragGhost'
 import { resolveBlockEditorTargetId } from './lib/program/callWire'
 import { findBlockInTree, getStatementLineNumber } from './lib/program/blockTree'
-import { collectDescendantBlockIds } from './lib/program/collectDescendantBlockIds'
+import { collectDescendantBlockIds, collectSubtreeBlockIds } from './lib/program/collectDescendantBlockIds'
 import { computeEditorPanelPosition } from './lib/workspace/editorPanelPlacement'
 import {
   getInspectorDefaultX,
@@ -58,6 +58,9 @@ function App() {
     updateVariableName,
     updateFunctionReturnType,
     updateFunctionName,
+    addFunctionParam,
+    removeFunctionParam,
+    updateFunctionParam,
     addTypeParamRow,
     removeTypeParamRow,
     updateTypeParamRow,
@@ -244,9 +247,17 @@ function App() {
     getBlocks: () => program.blocks,
   })
 
-  const closeBlockEditor = useCallback((blockId: string) => {
-    setEditorStack((prev) => prev.filter((id) => id !== blockId))
-  }, [])
+  const closeBlockEditor = useCallback(
+    (blockId: string) => {
+      setEditorStack((prev) => {
+        const block = findBlock(blockId)
+        if (!block) return prev.filter((id) => id !== blockId)
+        const toClose = new Set([blockId, ...collectSubtreeBlockIds(block)])
+        return prev.filter((id) => !toClose.has(id))
+      })
+    },
+    [findBlock],
+  )
 
   const closeNestedEditors = useCallback(
     (containerBlockId: string) => {
@@ -292,6 +303,9 @@ function App() {
       updateVariableName,
       updateFunctionReturnType,
       updateFunctionName,
+      addFunctionParam,
+      removeFunctionParam,
+      updateFunctionParam,
       addTypeParamRow,
       removeTypeParamRow,
       updateTypeParamRow,
@@ -328,6 +342,9 @@ function App() {
       updateVariableName,
       updateFunctionReturnType,
       updateFunctionName,
+      addFunctionParam,
+      removeFunctionParam,
+      updateFunctionParam,
       addTypeParamRow,
       removeTypeParamRow,
       updateTypeParamRow,

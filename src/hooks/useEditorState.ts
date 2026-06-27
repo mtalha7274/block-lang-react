@@ -45,6 +45,7 @@ import { getBlockValueType } from '../lib/program/blockContract'
 import {
   linkFunctionCallToTarget,
 } from '../lib/program/callWire'
+import { syncCallsToFunction } from '../lib/program/functionParams'
 import { ensureFunctionForCall } from '../lib/program/ensureFunctionForCall'
 import {
   createValueRefFromSource,
@@ -254,15 +255,15 @@ export function useEditorState() {
 
   const updateFunctionReturnType = useCallback(
     (blockId: string, returnType: ValueType) => {
-      setProgram((prev) => ({
-        ...prev,
-        blocks: updateBlockInTree(prev.blocks, blockId, (block) => {
+      setProgram((prev) => {
+        const blocks = updateBlockInTree(prev.blocks, blockId, (block) => {
           if (block.kind === 'function') {
             return { ...block, data: { ...block.data, returnType } }
           }
           return block
-        }),
-      }))
+        })
+        return applyProgramUpdate(prev, syncCallsToFunction(blocks, blockId))
+      })
     },
     [],
   )
@@ -313,6 +314,68 @@ export function useEditorState() {
       return { ...prev, blocks }
     })
   }, [])
+
+  const addFunctionParam = useCallback((functionId: string) => {
+    setProgram((prev) => {
+      let nextIndex = 1
+      const blocks = updateBlockInTree(prev.blocks, functionId, (block) => {
+        if (block.kind !== 'function') return block
+        nextIndex = block.data.params.length + 1
+        return {
+          ...block,
+          data: {
+            ...block.data,
+            params: [
+              ...block.data.params,
+              { id: nextRowId(), name: `param${nextIndex}`, type: 'number' },
+            ],
+          },
+        }
+      })
+      return applyProgramUpdate(prev, syncCallsToFunction(blocks, functionId))
+    })
+  }, [])
+
+  const removeFunctionParam = useCallback((functionId: string, rowId: string) => {
+    setProgram((prev) => {
+      const blocks = updateBlockInTree(prev.blocks, functionId, (block) => {
+        if (block.kind !== 'function') return block
+        return {
+          ...block,
+          data: {
+            ...block.data,
+            params: block.data.params.filter((r) => r.id !== rowId),
+          },
+        }
+      })
+      return applyProgramUpdate(prev, syncCallsToFunction(blocks, functionId))
+    })
+  }, [])
+
+  const updateFunctionParam = useCallback(
+    (
+      functionId: string,
+      rowId: string,
+      patch: { name?: string; type?: ValueType },
+    ) => {
+      setProgram((prev) => {
+        const blocks = updateBlockInTree(prev.blocks, functionId, (block) => {
+          if (block.kind !== 'function') return block
+          return {
+            ...block,
+            data: {
+              ...block.data,
+              params: block.data.params.map((r) =>
+                r.id === rowId ? { ...r, ...patch } : r,
+              ),
+            },
+          }
+        })
+        return applyProgramUpdate(prev, syncCallsToFunction(blocks, functionId))
+      })
+    },
+    [],
+  )
 
   const addTypeParamRow = useCallback((typeBlockId: string) => {
     setProgram((prev) => ({
@@ -380,6 +443,20 @@ export function useEditorState() {
       setProgram((prev) => {
         const call = findBlockInTree(prev.blocks, blockId)
         if (!call || call.kind !== 'functionCall') return prev
+
+        if (call.data.targetFunctionId) {
+          const fnId = call.data.targetFunctionId
+          const blocks = mapBlocksInTree(prev.blocks, (block) => {
+            if (block.id === fnId && block.kind === 'function') {
+              return { ...block, data: { ...block.data, name } }
+            }
+            if (block.kind === 'functionCall' && block.data.targetFunctionId === fnId) {
+              return { ...block, data: { ...block.data, functionName: name } }
+            }
+            return block
+          })
+          return applyProgramUpdate(prev, blocks)
+        }
 
         const callWithName: Extract<BlockNode, { kind: 'functionCall' }> = {
           ...call,
@@ -894,6 +971,9 @@ export function useEditorState() {
     updateVariableName,
     updateFunctionReturnType,
     updateFunctionName,
+    addFunctionParam,
+    removeFunctionParam,
+    updateFunctionParam,
     addTypeParamRow,
     removeTypeParamRow,
     updateTypeParamRow,
