@@ -2,6 +2,7 @@ import type { BlockNode, OperatorSymbol, ProgramDocument, ValueType } from '../.
 import { findBlockInTree } from '../program/blockTree'
 import { resolveFunctionCall } from '../program/resolveFunctionCall'
 import { deriveTypeParams } from '../program/typeParams'
+import { inferExpressionResultType } from '../program/expressionVariable'
 import type { Runtime, RuntimeValue } from './runtime'
 import { EmulationError } from './types'
 
@@ -168,6 +169,19 @@ function callFunction(
   return returnValue
 }
 
+function evaluateAndBindValue(
+  block: BlockNode,
+  runtime: Runtime,
+  doc: ProgramDocument,
+): RuntimeValue {
+  const value = evaluateExpression(block, runtime, doc)
+  if (block.kind === 'expression' && block.data.resultName) {
+    const resultType = inferExpressionResultType(block.data.operator)
+    runtime.set(block.data.resultName, value, resultType)
+  }
+  return value
+}
+
 export function executeStatement(
   block: BlockNode,
   runtime: Runtime,
@@ -190,7 +204,7 @@ export function executeStatement(
         runtime.set(name, defaultForType(valueType), valueType)
         return undefined
       }
-      const val = evaluateExpression(value, runtime, doc)
+      const val = evaluateAndBindValue(value, runtime, doc)
       assertType(val, valueType, `Variable ${name}`)
       runtime.set(name, val, valueType)
       return undefined
@@ -199,7 +213,11 @@ export function executeStatement(
     case 'expression': {
       const val = evaluateExpression(block, runtime, doc)
       if (block.data.resultName) {
-        runtime.set(block.data.resultName, val, block.data.resultType)
+        runtime.set(
+          block.data.resultName,
+          val,
+          inferExpressionResultType(block.data.operator),
+        )
       }
       return undefined
     }
@@ -213,7 +231,7 @@ export function executeStatement(
       if (!block.data.value) {
         throw new EmulationError('Print block missing value', block.id)
       }
-      const val = evaluateExpression(block.data.value, runtime, doc)
+      const val = evaluateAndBindValue(block.data.value, runtime, doc)
       runtime.appendOutput(block.id, runtime.formatValue(val))
       return undefined
     }
@@ -223,7 +241,7 @@ export function executeStatement(
         throw new EmulationError('Return outside function', block.id)
       }
       if (block.data.value) {
-        return evaluateExpression(block.data.value, runtime, doc)
+        return evaluateAndBindValue(block.data.value, runtime, doc)
       }
       return undefined
     }
@@ -232,7 +250,7 @@ export function executeStatement(
       if (!block.data.condition) {
         throw new EmulationError('If block missing condition', block.id)
       }
-      const cond = evaluateExpression(block.data.condition, runtime, doc)
+      const cond = evaluateAndBindValue(block.data.condition, runtime, doc)
       let branchResult: RuntimeValue | undefined
       if (cond) {
         branchResult = executeBlockList(block.data.trueBranch, runtime, doc, inFunction)
@@ -249,7 +267,7 @@ export function executeStatement(
       }
       while (true) {
         if (block.data.condition) {
-          const cond = evaluateExpression(block.data.condition, runtime, doc)
+          const cond = evaluateAndBindValue(block.data.condition, runtime, doc)
           if (!cond) break
         }
         const bodyResult = executeBlockList(block.data.body, runtime, doc, inFunction)
@@ -265,7 +283,7 @@ export function executeStatement(
       if (!block.data.condition) {
         throw new EmulationError('While block missing condition', block.id)
       }
-      while (evaluateExpression(block.data.condition, runtime, doc)) {
+      while (evaluateAndBindValue(block.data.condition, runtime, doc)) {
         const bodyResult = executeBlockList(block.data.body, runtime, doc, inFunction)
         if (bodyResult !== undefined && inFunction) return bodyResult
       }
@@ -297,7 +315,7 @@ function applyForIncrement(
 ): void {
   if (block.kind === 'expression' && block.data.resultName) {
     const val = evaluateExpression(block, runtime, doc)
-    runtime.set(block.data.resultName, val, block.data.resultType)
+    runtime.set(block.data.resultName, val, inferExpressionResultType(block.data.operator))
   }
 }
 

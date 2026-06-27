@@ -94,6 +94,7 @@ export function FunctionCallBlock({
                     parentBlockId: block.id,
                     argPortId: arg.portId,
                   }}
+                  scopeConsumerId={block.id}
                   expectedType={arg.type}
                   hint={`${arg.type}`}
                   filled={!!arg.value}

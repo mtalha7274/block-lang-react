@@ -77,7 +77,7 @@ export function resolveCallTarget(
   return byName ?? null
 }
 
-/** Block editor target: function calls open their linked function definition. */
+/** Linked function definition id for a function call (wire + fn editor button). */
 export function resolveBlockEditorTargetId(
   block: BlockNode,
   topLevelBlocks: BlockNode[],

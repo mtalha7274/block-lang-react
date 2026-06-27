@@ -12,7 +12,7 @@ interface MinimizedBlockChipProps {
     e: React.PointerEvent,
     anchorEl: HTMLElement,
   ) => void
-  onCallOutOpen?: () => void
+  onOpenLinkedDefinition?: () => void
   isSelected?: boolean
   usageOutPort?: boolean
   usageInPortId?: string
@@ -37,7 +37,7 @@ export function MinimizedBlockChip({
   onRemove,
   onReferenceDragStart,
   onChipPointerDown,
-  onCallOutOpen,
+  onOpenLinkedDefinition,
   isSelected = false,
   usageOutPort = false,
   usageInPortId,
@@ -48,7 +48,9 @@ export function MinimizedBlockChip({
   const showReferenceGrip = isValueSourceBlock(block) && !!onReferenceDragStart
 
   const openEditorFromEvent = (e: React.PointerEvent | React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.minimized-chip__link-grip, .minimized-chip__remove')) {
+    if ((e.target as HTMLElement).closest(
+      '.minimized-chip__link-grip, .minimized-chip__remove, .minimized-chip__fn-open',
+    )) {
       return
     }
     const anchor = (e.currentTarget as HTMLElement).closest('[data-block-id]') as HTMLElement
@@ -72,23 +74,34 @@ export function MinimizedBlockChip({
         <span className="usage-anchor usage-anchor--out" data-port-id="value-out" aria-hidden />
       )}
       {callOutPort && (
-        <button
-          type="button"
+        <span
           className="usage-anchor usage-anchor--out"
           data-port-id="call-out"
+          aria-hidden
+        />
+      )}
+      {onOpenLinkedDefinition && (
+        <button
+          type="button"
+          className="minimized-chip__fn-open"
           aria-label="Open function definition"
+          title="Open function definition"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation()
-            onCallOutOpen?.()
+            onOpenLinkedDefinition()
           }}
-        />
+        >
+          fn
+        </button>
       )}
       <button
         type="button"
         className="minimized-chip__main"
         onPointerDown={(e) => {
-          if ((e.target as HTMLElement).closest('.minimized-chip__link-grip, .minimized-chip__remove')) {
+          if ((e.target as HTMLElement).closest(
+            '.minimized-chip__link-grip, .minimized-chip__remove, .minimized-chip__fn-open',
+          )) {
             return
           }
           const anchor = e.currentTarget.closest('[data-block-id]') as HTMLElement

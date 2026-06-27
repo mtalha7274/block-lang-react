@@ -176,6 +176,84 @@ describe('slotRules', () => {
     expect(canAttachBlockToSlot(target, primitive, findBlock, {}, () => blocks)).toBe(false)
   })
 
+  it('accepts expression palette kind in boolean if-condition slots', () => {
+    const ifBlock = createBlockFromKind('if')
+    const target: SlotTarget = {
+      kind: 'if-condition',
+      parentBlockId: ifBlock.id,
+    }
+    const findBlock = findBlockFactory([ifBlock])
+
+    expect(canAttachPaletteKindToSlot(target, 'expression', findBlock)).toBe(true)
+  })
+
+  it('coerces expression blocks for boolean condition slots on attach', () => {
+    const ifBlock = createBlockFromKind('if')
+    const target: SlotTarget = {
+      kind: 'if-condition',
+      parentBlockId: ifBlock.id,
+    }
+    const blocks = [ifBlock]
+    const findBlock = findBlockFactory(blocks)
+    const expression = createBlockFromKind('expression')
+
+    expect(canAttachBlockToSlot(target, expression, findBlock, {}, () => blocks)).toBe(true)
+
+    const normalized = normalizeBlockForSlot(target, expression, findBlock, {}, () => blocks)
+    expect(normalized.kind).toBe('expression')
+    if (normalized.kind === 'expression') {
+      expect(normalized.data.operator).toBe('==')
+      expect(normalized.data.resultType).toBe('boolean')
+      expect(normalized.data.resultName).toBe('cond')
+    }
+  })
+
+  it('accepts expression blocks in for and while condition slots', () => {
+    const forBlock = createBlockFromKind('for')
+    const whileBlock = createBlockFromKind('while')
+    const blocks = [forBlock, whileBlock]
+    const findBlock = (id: string) => blocks.find((b) => b.id === id)
+    const expression = createBlockFromKind('expression')
+
+    expect(
+      canAttachBlockToSlot(
+        { kind: 'for-condition', parentBlockId: forBlock.id },
+        expression,
+        findBlock,
+        {},
+        () => blocks,
+      ),
+    ).toBe(true)
+    expect(
+      canAttachBlockToSlot(
+        { kind: 'while-condition', parentBlockId: whileBlock.id },
+        expression,
+        findBlock,
+        {},
+        () => blocks,
+      ),
+    ).toBe(true)
+  })
+
+  it('accepts expression blocks in typed variable-value slots', () => {
+    const variable: BlockNode = {
+      ...(createBlockFromKind('variable') as Extract<BlockNode, { kind: 'variable' }>),
+      data: {
+        name: 'total',
+        valueType: 'number',
+      },
+    }
+    const target: SlotTarget = {
+      kind: 'variable-value',
+      parentBlockId: variable.id,
+    }
+    const blocks = [variable]
+    const findBlock = findBlockFactory(blocks)
+    const expression = createBlockFromKind('expression')
+
+    expect(canAttachBlockToSlot(target, expression, findBlock, {}, () => blocks)).toBe(true)
+  })
+
   it('rejects expression palette kind in statement-body slots', () => {
     const main = createBlockFromKind('main')
     const target: SlotTarget = {

@@ -14,9 +14,9 @@
 }
 
 .toolbar__logo {
-  display: block;
-  width: 24px;
-  height: 24px;
+  font-size: 22px;
+  color: var(--accent);
+  line-height: 1;
 }
 
 .toolbar__title {

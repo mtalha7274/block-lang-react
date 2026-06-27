@@ -131,7 +131,7 @@ function App() {
 
   const openBlockEditor = useCallback(
     (blockId: string, anchorEl?: HTMLElement | null) => {
-      const editorBlockId = getEditorTargetBlockId(blockId)
+      const editorBlockId = blockId
       const panelId = `blockEditor-${editorBlockId}`
       const siblingEditorsToClose = getSiblingEditorIdsToClose(program.blocks, blockId)
 
@@ -157,7 +157,7 @@ function App() {
 
       raisePanel(panelId)
     },
-    [getEditorTargetBlockId, movePanel, panelPositions, program.blocks, raisePanel],
+    [movePanel, panelPositions, program.blocks, raisePanel],
   )
 
   const attachNewBlockFromPalette = useCallback(
