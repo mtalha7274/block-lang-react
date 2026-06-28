@@ -67,11 +67,14 @@ function expressionContract(): BlockContract<'expression'> {
     getValueType: (block) => inferExpressionResultType(block.data.operator),
     canUseAsStatement: () => false,
     canCreateValueReference: () => true,
-    getMiniBlockView: (block) => ({
-      label: `${block.data.resultName || 'result'} = ...`,
-      color: typeColorMap[block.data.resultType],
-      valueType: block.data.resultType,
-    }),
+    getMiniBlockView: (block) => {
+      const name = block.data.resultName || 'result'
+      return {
+        label: `${name} = ...`,
+        color: typeColorMap[inferExpressionResultType(block.data.operator)],
+        valueType: inferExpressionResultType(block.data.operator),
+      }
+    },
   }
 }
 
@@ -223,5 +226,8 @@ export function getMiniBlockView(block: BlockNode): MiniBlockView {
 
 export function getValueLabel(block: BlockNode): string | null {
   if (!canCreateValueReference(block)) return null
+  if (block.kind === 'expression') {
+    return block.data.resultName || 'result'
+  }
   return getMiniBlockView(block).label
 }

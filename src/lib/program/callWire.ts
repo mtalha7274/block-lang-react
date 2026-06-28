@@ -1,5 +1,6 @@
 import type { BlockNode, ConnectionEdge, ProgramDocument } from '../../types'
 import { deriveFunctionParams } from './functionParams'
+import { mapBlocksInTree } from './blockTree'
 
 export const CALL_OUT_PORT = 'call-out'
 export const CALL_IN_PORT = 'call-in'
@@ -77,16 +78,24 @@ export function resolveCallTarget(
   return byName ?? null
 }
 
-/** Linked function definition id for a function call (wire + fn editor button). */
+/** Block editor target: function calls open their own editor so args are editable. */
 export function resolveBlockEditorTargetId(
   block: BlockNode,
-  topLevelBlocks: BlockNode[],
+  _topLevelBlocks: BlockNode[],
 ): string {
-  if (block.kind === 'functionCall') {
-    const fn = resolveCallTarget(block, topLevelBlocks)
-    if (fn) return fn.id
-  }
   return block.id
+}
+
+export function syncLinkedFunctionCalls(
+  blocks: BlockNode[],
+  fn: FunctionBlock,
+): BlockNode[] {
+  return mapBlocksInTree(blocks, (block) => {
+    if (block.kind !== 'functionCall') return block
+    const target = resolveCallTarget(block, blocks)
+    if (target?.id !== fn.id) return block
+    return linkFunctionCallToTarget(block, fn)
+  })
 }
 
 export function linkFunctionCallToTarget(

@@ -8,6 +8,16 @@ import {
 } from './expressionVariable'
 
 describe('expressionVariable', () => {
+  it('infers boolean type from comparison operators', () => {
+    expect(inferExpressionResultType('==')).toBe('boolean')
+    expect(inferExpressionResultType('>')).toBe('boolean')
+  })
+
+  it('infers number type from arithmetic operators', () => {
+    expect(inferExpressionResultType('+')).toBe('number')
+    expect(inferExpressionResultType('%')).toBe('number')
+  })
+
   it('coerces expression operator for boolean if-condition slots', () => {
     const ifBlock = createBlockFromKind('if')
     const expression = createBlockFromKind('expression') as Extract<BlockNode, { kind: 'expression' }>
@@ -20,11 +30,6 @@ describe('expressionVariable', () => {
     expect(normalized.data.operator).toBe('==')
     expect(normalized.data.resultType).toBe('boolean')
     expect(normalized.data.resultName).toBe('cond')
-  })
-
-  it('infers boolean type from comparison operators', () => {
-    expect(inferExpressionResultType('==')).toBe('boolean')
-    expect(inferExpressionResultType('+')).toBe('number')
   })
 
   it('preserves existing expression resultName when attaching to another value slot', () => {

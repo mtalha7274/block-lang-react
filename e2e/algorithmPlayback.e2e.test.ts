@@ -4,17 +4,12 @@ import { By, until } from 'selenium-webdriver'
 import {
   createDriver,
   E2E_BASE_URL,
+  playSelectedAlgorithm,
   waitForAppReady,
 } from './helpers/driver'
-import { dragElementToElement, waitForPlaybackGhost } from './helpers/dragDrop'
-
-async function waitForDemoComplete(driver: WebDriver, timeoutMs = 120_000): Promise<void> {
-  await driver.wait(async () => {
-    return driver.executeScript<boolean>(
-      () => document.body.dataset.demoComplete === 'true',
-    )
-  }, timeoutMs, 'Algorithm demo did not complete')
-}
+import { dragElementToElement } from './helpers/dragDrop'
+import { buildSumToN } from '../src/lib/algorithms/builders'
+import { runProgramDirect } from '../src/testApi'
 
 describe('algorithm playback e2e (Chrome WebDriver)', () => {
   let driver: WebDriver
@@ -34,29 +29,27 @@ describe('algorithm playback e2e (Chrome WebDriver)', () => {
       window.__BLOCKLANG_TEST__!.selectAlgorithm('sum-to-n')
     })
 
-    await driver.findElement(By.css('[data-testid="toolbar-algorithm-play"]')).click()
+    await playSelectedAlgorithm(driver)
 
-    await waitForPlaybackGhost(driver)
-
-    await driver.wait(async () => {
-      const state = await driver.executeScript(() =>
-        window.__BLOCKLANG_TEST__!.getPlaybackState(),
-      )
-      return state.isPlaying && state.stepIndex > 0
-    }, 20_000, 'Playback did not advance')
-
-    await waitForDemoComplete(driver)
-
-    const mainChips = await driver.findElements(
-      By.css('[data-block-id="main"] .minimized-chip'),
+    const playbackState = await driver.executeScript(() =>
+      window.__BLOCKLANG_TEST__!.getPlaybackState(),
     )
-    expect(mainChips.length).toBeGreaterThanOrEqual(2)
+    expect(playbackState.totalSteps).toBeGreaterThan(0)
+    expect(playbackState.demoComplete).toBe(true)
 
     const validationErrors = await driver.executeScript(() =>
       window.__BLOCKLANG_TEST__!.getValidationErrors(),
     )
     expect(validationErrors).toEqual([])
-  })
+
+    const emulate = await driver.executeScript(() => window.__BLOCKLANG_TEST__!.runEmulate())
+    const expected = runProgramDirect(buildSumToN(10))
+    expect(emulate.status).toBe('success')
+    expect(emulate.status).toBe(expected.status)
+    expect(emulate.variables.sum).toBe(
+      expected.variables.find((v) => v.name === 'sum')?.value,
+    )
+  }, 90_000)
 
   it('drags a variable from palette to main like a user', async () => {
     await dragElementToElement(

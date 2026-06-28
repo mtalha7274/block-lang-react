@@ -61,3 +61,25 @@ export async function clickEmulate(driver: WebDriver): Promise<void> {
   await driver.wait(until.elementIsEnabled(button), 10_000)
   await button.click()
 }
+
+export async function playSelectedAlgorithm(driver: WebDriver, timeoutMs = 60_000): Promise<void> {
+  await driver.executeAsyncScript(function (timeout) {
+    const done = arguments[arguments.length - 1] as (err?: string) => void
+    const api = window.__BLOCKLANG_TEST__
+    if (!api) {
+      done('BlockLang test API is unavailable')
+      return
+    }
+
+    const timer = window.setTimeout(() => done('Algorithm playback timed out'), timeout)
+    void api.playAlgorithm()
+      .then(() => {
+        window.clearTimeout(timer)
+        done()
+      })
+      .catch((error: unknown) => {
+        window.clearTimeout(timer)
+        done(error instanceof Error ? error.message : String(error))
+      })
+  }, timeoutMs)
+}

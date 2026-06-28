@@ -224,6 +224,7 @@ export function useBlockDrag({
       e.dataTransfer.effectAllowed = 'copy'
       draggingPaletteKindRef.current = kind
       setDraggingPaletteKind(kind)
+      document.body.dataset.paletteDrag = kind
     },
     [],
   )
@@ -231,6 +232,7 @@ export function useBlockDrag({
   const handlePaletteDragEnd = useCallback(() => {
     draggingPaletteKindRef.current = null
     setDraggingPaletteKind(null)
+    delete document.body.dataset.paletteDrag
     clearSlotHover()
   }, [clearSlotHover])
 
@@ -448,30 +450,34 @@ export function useBlockDrag({
       anchorEl: HTMLElement,
       openEditor: (anchor: HTMLElement) => void,
     ) => {
+      e.preventDefault()
+      e.stopPropagation()
+
       const startX = e.clientX
       const startY = e.clientY
-      let didDrag = false
+      let dragStarted = false
 
       const chipWidth = anchorEl.offsetWidth || BLOCK_KIND_PREVIEW.variable.width
       const chipHeight = anchorEl.offsetHeight || BLOCK_KIND_PREVIEW.variable.height
 
-      setDraggingBlockId(blockId)
-      blockDragRef.current = {
-        blockId,
-        offsetX: 0,
-        offsetY: 0,
-        originX: 0,
-        originY: 0,
-        blockWidth: chipWidth,
-        blockHeight: chipHeight,
-      }
-
       const onMove = (ev: PointerEvent) => {
         const dx = ev.clientX - startX
         const dy = ev.clientY - startY
-        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-          didDrag = true
+        if (!dragStarted && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+          dragStarted = true
+          setDraggingBlockId(blockId)
+          blockDragRef.current = {
+            blockId,
+            offsetX: 0,
+            offsetY: 0,
+            originX: 0,
+            originY: 0,
+            blockWidth: chipWidth,
+            blockHeight: chipHeight,
+          }
         }
+
+        if (!dragStarted) return
 
         const dropTarget = slotTargetFromPoint(ev.clientX, ev.clientY, blockId)
         if (dropTarget) {
@@ -488,28 +494,30 @@ export function useBlockDrag({
       const onUp = (ev: PointerEvent) => {
         window.removeEventListener('pointermove', onMove)
 
-        const dropTarget = slotTargetFromPoint(ev.clientX, ev.clientY, blockId)
-        const block = findBlock(blockId)
-
-        if (!didDrag) {
+        if (!dragStarted) {
           openEditor(anchorEl)
-        } else if (dropTarget && block) {
-          const valid = evaluateSlotValidity(dropTarget, block, null, findBlock, getBlocks)
-          if (valid) {
-            const ok = onAttachBlockId(blockId, dropTarget)
-            if (!ok) {
+        } else {
+          const dropTarget = slotTargetFromPoint(ev.clientX, ev.clientY, blockId)
+          const block = findBlock(blockId)
+
+          if (dropTarget && block) {
+            const valid = evaluateSlotValidity(dropTarget, block, null, findBlock, getBlocks)
+            if (valid) {
+              const ok = onAttachBlockId(blockId, dropTarget)
+              if (!ok) {
+                flashSlotReject(
+                  dropTarget,
+                  dropRejectMessage(dropTarget, null, block, undefined, findBlock, getBlocks),
+                  blockId,
+                )
+              }
+            } else {
               flashSlotReject(
                 dropTarget,
                 dropRejectMessage(dropTarget, null, block, undefined, findBlock, getBlocks),
                 blockId,
               )
             }
-          } else {
-            flashSlotReject(
-              dropTarget,
-              dropRejectMessage(dropTarget, null, block, undefined, findBlock, getBlocks),
-              blockId,
-            )
           }
         }
 
