@@ -8,6 +8,7 @@ import { findBlockInTree, findBlockParent } from './blockTree'
 import { findEnclosingFunction } from './enclosingFunction'
 import {
   deriveFunctionParams,
+  findFunctionParamBySourceId,
   functionParamSourceId,
   isFunctionParamSourceId,
 } from './functionParams'
@@ -309,6 +310,43 @@ export function getInScopeValuesForConsumer(
   }
 
   return result
+}
+
+export function resolveScopeConsumerForStatementBody(
+  blocks: BlockNode[],
+  target: Extract<SlotTarget, { kind: 'statement-body' }>,
+): string {
+  const statements = getStatementsForParent(blocks, target.parentBlockId, target.region)
+  if (statements.length > 0) {
+    return statements[statements.length - 1].id
+  }
+  return target.parentBlockId
+}
+
+export function getAssignableInScopeValues(
+  blocks: BlockNode[],
+  consumerBlockId: string,
+): InScopeValue[] {
+  return getInScopeValuesForConsumer(blocks, consumerBlockId).filter(
+    (value) => value.kind === 'variable' || value.kind === 'functionParam',
+  )
+}
+
+export function resolveAssignableBinding(
+  blocks: BlockNode[],
+  sourceBlockId: string,
+): { name: string; valueType: ValueType } | null {
+  const paramSource = findFunctionParamBySourceId(blocks, sourceBlockId)
+  if (paramSource) {
+    return { name: paramSource.param.name, valueType: paramSource.param.type }
+  }
+
+  const source = findBlockInTree(blocks, sourceBlockId)
+  if (source?.kind === 'variable') {
+    return { name: source.data.name, valueType: source.data.valueType }
+  }
+
+  return null
 }
 
 const CONSUMER_VALUE_SLOT_KINDS = new Set<SlotTarget['kind']>([

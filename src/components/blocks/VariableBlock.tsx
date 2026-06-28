@@ -2,7 +2,9 @@ import type { BlockNode, RenderChildOptions } from '../../types'
 import { typeColorMap } from '../../constants'
 import { useDragContext } from '../canvas/DragContext'
 import { PuzzleStrip } from './PuzzleStrip'
-import { TypeSelect, TypeBadge, BlockSlot } from '../ui'
+import { TypeSelect, TypeBadge, BlockSlot, ScopePicker } from '../ui'
+import { resolveScopeConsumerForStatementBody } from '../../lib/program/scope'
+import { findBlockParent } from '../../lib/program/blockTree'
 import { ValueSourceOutPort } from './ValueSourceOutPort'
 import './VariableBlock.css'
 
@@ -29,6 +31,16 @@ export function VariableBlock({
   const isDragging = ctx.draggingBlockId === block.id
 
   const slotTarget = { kind: 'variable-value' as const, parentBlockId: block.id }
+  const assignableScopeConsumerId = inStatementBody
+    ? (() => {
+        const parent = findBlockParent(ctx.getBlocks(), block.id)
+        if (!parent || parent.target.kind !== 'statement-body') return block.id
+        return resolveScopeConsumerForStatementBody(ctx.getBlocks(), parent.target)
+      })()
+    : block.id
+  const assignableOptions = inStatementBody
+    ? ctx.getAssignableScopeValues(assignableScopeConsumerId)
+    : []
 
   if (compact) {
     return (
@@ -69,6 +81,19 @@ export function VariableBlock({
             value={name}
             onChange={(e) => ctx.updateVariableName(block.id, e.target.value)}
           />
+          {inStatementBody && assignableOptions.length > 0 && (
+            <ScopePicker
+              options={assignableOptions}
+              toggleLabel="Assign to…"
+              onSelect={(sourceBlockId) => {
+                const selected = assignableOptions.find((item) => item.blockId === sourceBlockId)
+                if (selected) {
+                  ctx.updateVariableName(block.id, selected.label)
+                  ctx.updateBlockType(block.id, selected.valueType)
+                }
+              }}
+            />
+          )}
           {!inStatementBody && (
             <ValueSourceOutPort
               block={block}

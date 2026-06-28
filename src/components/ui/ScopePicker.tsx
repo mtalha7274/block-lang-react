@@ -7,10 +7,16 @@ import './ScopePicker.css'
 interface ScopePickerProps {
   options: InScopeValue[]
   expectedType?: ValueType
+  toggleLabel?: string
   onSelect: (sourceBlockId: string) => void
 }
 
-export function ScopePicker({ options, expectedType, onSelect }: ScopePickerProps) {
+export function ScopePicker({
+  options,
+  expectedType,
+  toggleLabel = 'Use existing…',
+  onSelect,
+}: ScopePickerProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -38,7 +44,7 @@ export function ScopePicker({ options, expectedType, onSelect }: ScopePickerProp
         className="scope-picker__toggle"
         onClick={() => setOpen((v) => !v)}
       >
-        Use existing…
+        {toggleLabel}
       </button>
       {open && (
         <ul className="scope-picker__menu" role="listbox">

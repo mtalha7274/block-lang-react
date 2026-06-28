@@ -76,6 +76,14 @@ export interface DragContextValue {
   detachNestedBlock: (blockId: string) => void
   removeTopLevelBlock: (blockId: string) => void
   assignInScopeReference: (sourceBlockId: string, target: SlotTarget) => boolean
+  assignReassignmentToBody: (
+    sourceBlockId: string,
+    target: Extract<SlotTarget, { kind: 'statement-body' }>,
+  ) => string | null
+  resolveStatementBodyScopeConsumer: (
+    target: Extract<SlotTarget, { kind: 'statement-body' }>,
+  ) => string
+  getAssignableScopeValues: (consumerBlockId: string) => import('../../lib/program/scope').InScopeValue[]
   getInScopeValues: (consumerBlockId: string) => import('../../lib/program/scope').InScopeValue[]
   getBlocks: () => BlockNode[]
   isNested: boolean
@@ -128,6 +136,9 @@ export function useDragContext(): DragContextValue {
       detachNestedBlock: () => {},
       removeTopLevelBlock: () => {},
       assignInScopeReference: () => false,
+      assignReassignmentToBody: () => null,
+      resolveStatementBodyScopeConsumer: () => '',
+      getAssignableScopeValues: () => [],
       getInScopeValues: () => [],
       getBlocks: () => [],
       isNested: false,

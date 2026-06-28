@@ -40,7 +40,7 @@ import {
   updateWhileCondition,
 } from '../lib/program/blockTree'
 import { createDefaultPanelPositions } from '../lib/workspace/panelDefaults'
-import { getInScopeValuesForConsumer, resolveInScopeReferenceSource, resolveScopeConsumerId, shouldUseInScopeReference } from '../lib/program/scope'
+import { getAssignableInScopeValues, getInScopeValuesForConsumer, resolveAssignableBinding, resolveInScopeReferenceSource, resolveScopeConsumerForStatementBody, resolveScopeConsumerId, shouldUseInScopeReference } from '../lib/program/scope'
 import { getBlockValueType } from '../lib/program/blockContract'
 import {
   linkFunctionCallToTarget,
@@ -159,6 +159,40 @@ function assignReferenceToSlot(
   return {
     next: applyProgramUpdate(prev, blocks, connections),
     accepted: true,
+  }
+}
+
+function assignReassignmentToStatementBody(
+  prev: ProgramDocument,
+  sourceBlockId: string,
+  target: Extract<SlotTarget, { kind: 'statement-body' }>,
+): { next: ProgramDocument; accepted: boolean; createdBlockId?: string } {
+  const consumerId = resolveScopeConsumerForStatementBody(prev.blocks, target)
+  const inScope = getAssignableInScopeValues(prev.blocks, consumerId)
+  if (!inScope.some((value) => value.blockId === sourceBlockId)) {
+    return { next: prev, accepted: false }
+  }
+
+  const binding = resolveAssignableBinding(prev.blocks, sourceBlockId)
+  if (!binding) {
+    return { next: prev, accepted: false }
+  }
+
+  const variableStmt = createBlockFromKind('variable') as Extract<BlockNode, { kind: 'variable' }>
+  variableStmt.data.name = binding.name
+  variableStmt.data.valueType = binding.valueType
+
+  const blocks = appendToStatementBody(
+    prev.blocks,
+    target.parentBlockId,
+    target.region,
+    variableStmt,
+  )
+
+  return {
+    next: applyProgramUpdate(prev, blocks),
+    accepted: true,
+    createdBlockId: variableStmt.id,
   }
 }
 
@@ -861,6 +895,31 @@ export function useEditorState() {
     [],
   )
 
+  const assignReassignmentToBody = useCallback(
+    (sourceBlockId: string, target: Extract<SlotTarget, { kind: 'statement-body' }>): string | null => {
+      let createdId: string | null = null
+      setProgram((prev) => {
+        const result = assignReassignmentToStatementBody(prev, sourceBlockId, target)
+        createdId = result.createdBlockId ?? null
+        return result.next
+      })
+      return createdId
+    },
+    [],
+  )
+
+  const resolveStatementBodyScopeConsumer = useCallback(
+    (target: Extract<SlotTarget, { kind: 'statement-body' }>) =>
+      resolveScopeConsumerForStatementBody(program.blocks, target),
+    [program.blocks],
+  )
+
+  const getAssignableScopeValues = useCallback(
+    (consumerBlockId: string) =>
+      getAssignableInScopeValues(program.blocks, consumerBlockId),
+    [program.blocks],
+  )
+
   const getInScopeValues = useCallback(
     (consumerBlockId: string) =>
       getInScopeValuesForConsumer(program.blocks, consumerBlockId),
@@ -987,6 +1046,9 @@ export function useEditorState() {
     updateBlockLayout,
     attachBlockIdToSlot,
     assignInScopeReference,
+    assignReassignmentToBody,
+    resolveStatementBodyScopeConsumer,
+    getAssignableScopeValues,
     getInScopeValues,
     attachNewBlockToSlot,
     attachTemplateBlockToSlot,

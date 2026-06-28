@@ -2,6 +2,7 @@ import type { BlockNode, RenderChildOptions, ConnectionEdge, StatementBodyRegion
 import { ConnectionLayer } from '../canvas/ConnectionLayer'
 import { BlockSlot } from '../ui'
 import { CloseNestedEditorsButton } from './CloseNestedEditorsButton'
+import { useDragContext } from '../canvas/DragContext'
 import './StatementBody.css'
 
 interface StatementBodyProps {
@@ -25,11 +26,13 @@ export function StatementBody({
   slotHint = 'Drop a Variable, Print, Return, Function Call, or control-flow block here',
   connections = [],
 }: StatementBodyProps) {
+  const ctx = useDragContext()
   const slotTarget = {
     kind: 'statement-body' as const,
     parentBlockId,
     region,
   }
+  const scopeConsumerId = ctx.resolveStatementBodyScopeConsumer(slotTarget)
 
   const statementIds = new Set(statements.map((s) => s.id))
   const usageEdges = connections.filter(
@@ -69,7 +72,12 @@ export function StatementBody({
       ))}
       <div className="statement-body__row statement-body__row--append">
         <span className="statement-body__line" aria-hidden />
-        <BlockSlot slotTarget={slotTarget} hint={slotHint} />
+        <BlockSlot
+          slotTarget={slotTarget}
+          scopeConsumerId={scopeConsumerId}
+          scopePickerMode="assign"
+          hint={slotHint}
+        />
       </div>
       {bodyEdges.length > 0 && (
         <ConnectionLayer edges={bodyEdges} blockIds={statements.map((s) => s.id)} />

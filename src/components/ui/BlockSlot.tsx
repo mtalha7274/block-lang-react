@@ -12,6 +12,7 @@ interface BlockSlotProps {
   filled?: boolean
   invalid?: boolean
   scopeConsumerId?: string
+  scopePickerMode?: 'read' | 'assign'
   children?: React.ReactNode
 }
 
@@ -23,6 +24,7 @@ export function BlockSlot({
   filled = false,
   invalid = false,
   scopeConsumerId,
+  scopePickerMode = 'read',
   children,
 }: BlockSlotProps) {
   const ctx = useDragContext()
@@ -32,9 +34,15 @@ export function BlockSlot({
   const isInvalid = hovered && ctx.slotValidity === 'invalid'
   const showPreview = isValid && !filled && ctx.hoverPreviewSize
 
-  const scopeOptions: InScopeValue[] = scopeConsumerId
-    ? ctx.getInScopeValues(scopeConsumerId)
-    : []
+  const isAssignMode =
+    scopePickerMode === 'assign' && slotTarget?.kind === 'statement-body'
+
+  const scopeOptions: InScopeValue[] =
+    scopeConsumerId && isAssignMode
+      ? ctx.getAssignableScopeValues(scopeConsumerId)
+      : scopeConsumerId
+        ? ctx.getInScopeValues(scopeConsumerId)
+        : []
 
   const classes = [
     'slot',
@@ -99,6 +107,13 @@ export function BlockSlot({
 
   const handlePickInScope = (sourceBlockId: string) => {
     if (!slotTarget) return
+    if (isAssignMode && slotTarget.kind === 'statement-body') {
+      const createdId = ctx.assignReassignmentToBody(sourceBlockId, slotTarget)
+      if (createdId) {
+        ctx.openBlockEditor(createdId)
+      }
+      return
+    }
     ctx.assignInScopeReference(sourceBlockId, slotTarget)
   }
 
@@ -113,10 +128,11 @@ export function BlockSlot({
       {!filled && (
         <>
           <span className="slot__hint">{hintText}</span>
-          {scopeConsumerId && slotTarget && (
+          {scopeConsumerId && slotTarget && scopeOptions.length > 0 && (
             <ScopePicker
               options={scopeOptions}
               expectedType={expectedType}
+              toggleLabel={isAssignMode ? 'Assign to existing…' : 'Use existing…'}
               onSelect={handlePickInScope}
             />
           )}

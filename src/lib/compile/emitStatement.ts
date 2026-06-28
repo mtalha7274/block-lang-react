@@ -24,12 +24,20 @@ export function emitStatement(
       const name = ctx.sanitizeIdentifier(block.data.name)
       const { valueType, value } = block.data
       if (!value) {
+        if (ctx.declaredNames.has(name)) {
+          return [`${ind}// ${name} already declared`]
+        }
+        ctx.declaredNames.add(name)
         return [`${ind}let ${name}: ${valueType};`]
       }
       const expr = emitExpression(value, ctx, errors, depth)
       if (expr === null) {
         return [`${ind}// Error: missing value for variable ${name}`]
       }
+      if (ctx.declaredNames.has(name)) {
+        return [`${ind}${name} = ${expr};`]
+      }
+      ctx.declaredNames.add(name)
       return [`${ind}let ${name}: ${valueType} = ${expr};`]
     }
 
@@ -181,13 +189,17 @@ export function emitFunction(
 
   const prevInFunction = ctx.inFunctionBody
   const prevReturnType = ctx.currentFunctionReturnType
+  const prevDeclaredNames = new Set(ctx.declaredNames)
   ctx.inFunctionBody = true
   ctx.currentFunctionReturnType = block.data.returnType
+  params.forEach((p) => ctx.declaredNames.add(ctx.sanitizeIdentifier(p.name)))
   for (const stmt of block.data.body) {
     lines.push(...emitStatement(stmt, ctx, errors, 1))
   }
   ctx.inFunctionBody = prevInFunction
   ctx.currentFunctionReturnType = prevReturnType
+  ctx.declaredNames.clear()
+  prevDeclaredNames.forEach((n) => ctx.declaredNames.add(n))
 
   if (block.data.body.length === 0 && block.data.returnType === 'void') {
     lines.push('  // empty')

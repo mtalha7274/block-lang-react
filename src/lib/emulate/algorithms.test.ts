@@ -448,4 +448,16 @@ describe('BLOCK_RULES compliance via emulation', () => {
     expect(result.status).toBe('success')
     expect(getVarNumber(result, 'left')).toBe(0)
   })
+
+  it('reassigns an outer main variable inside an if branch', () => {
+    const doc = program(
+      main([
+        variable('x', num(0)),
+        ifBlock(bool(true), [reassign('x', num(5))]),
+      ]),
+    )
+    const result = runProgram(doc)
+    expect(result.status).toBe('success')
+    expect(getVarNumber(result, 'x')).toBe(5)
+  })
 })

@@ -5,6 +5,7 @@ export class CompileContext {
   readonly doc: ProgramDocument
   inFunctionBody = false
   currentFunctionReturnType: ValueType = 'void'
+  readonly declaredNames = new Set<string>()
 
   constructor(doc: ProgramDocument) {
     this.doc = doc
