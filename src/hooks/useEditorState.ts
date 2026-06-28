@@ -950,8 +950,19 @@ export function useEditorState() {
   )
 
   const attachTemplateBlockToSlot = useCallback(
-    (template: BlockNode, target: SlotTarget): { accepted: boolean; createdFunctionId?: string } => {
-      let result = { accepted: false, createdFunctionId: undefined as string | undefined }
+    (
+      template: BlockNode,
+      target: SlotTarget,
+    ): {
+      accepted: boolean
+      createdFunctionId?: string
+      program?: ProgramDocument
+    } => {
+      let result: {
+        accepted: boolean
+        createdFunctionId?: string
+        program?: ProgramDocument
+      } = { accepted: false }
       setProgram((prev) => {
         const inner = attachBlockToSlotInner(prev, template, target, {
           allowPrimitiveTypeInit: true,
@@ -959,6 +970,7 @@ export function useEditorState() {
         result = {
           accepted: inner.accepted,
           createdFunctionId: inner.createdFunctionId,
+          program: inner.accepted ? inner.next : undefined,
         }
         return inner.next
       })
@@ -968,11 +980,17 @@ export function useEditorState() {
   )
 
   const ensureTopLevelFunction = useCallback(
-    (fn: Extract<BlockNode, { kind: 'function' }>) => {
+    (fn: Extract<BlockNode, { kind: 'function' }>): ProgramDocument | undefined => {
+      let nextProgram: ProgramDocument | undefined
       setProgram((prev) => {
-        if (prev.blocks.some((b) => b.id === fn.id)) return prev
-        return applyProgramUpdate(prev, [...prev.blocks, fn])
+        if (prev.blocks.some((b) => b.id === fn.id)) {
+          nextProgram = prev
+          return prev
+        }
+        nextProgram = applyProgramUpdate(prev, [...prev.blocks, fn])
+        return nextProgram
       })
+      return nextProgram
     },
     [],
   )

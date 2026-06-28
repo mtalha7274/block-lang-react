@@ -1,6 +1,7 @@
 import type { EmulationStatus } from '../../types'
 import type { AlgorithmDefinition } from '../../constants/algorithmCatalog'
 import { AlgorithmPlayButton } from './AlgorithmPlayButton'
+import { AlgorithmSelectButton } from './AlgorithmSelectButton'
 import { Button } from '../ui'
 import './Toolbar.css'
 
@@ -15,6 +16,7 @@ interface ToolbarProps {
   selectedAlgorithmId: string
   isAlgorithmPlaying: boolean
   algorithmStatusMessage?: string | null
+  algorithmValidationError?: boolean
   onSelectAlgorithm: (id: string) => void
   onAlgorithmPlay: () => void
   onAlgorithmStop: () => void
@@ -31,6 +33,7 @@ export function Toolbar({
   selectedAlgorithmId,
   isAlgorithmPlaying,
   algorithmStatusMessage,
+  algorithmValidationError = false,
   onSelectAlgorithm,
   onAlgorithmPlay,
   onAlgorithmStop,
@@ -42,17 +45,7 @@ export function Toolbar({
         <h1 className="toolbar__title">BlockLang</h1>
       </div>
 
-      <div className="toolbar__controls">
-        <AlgorithmPlayButton
-          algorithms={algorithms}
-          selectedId={selectedAlgorithmId}
-          isPlaying={isAlgorithmPlaying}
-          statusMessage={algorithmStatusMessage}
-          onSelect={onSelectAlgorithm}
-          onPlay={onAlgorithmPlay}
-          onStop={onAlgorithmStop}
-        />
-
+      <div className="toolbar__center">
         {isEmulating && (
           <span className="toolbar__running">
             <span
@@ -80,6 +73,28 @@ export function Toolbar({
         <Button variant="ghost" size="sm" onClick={onReset} title="Reset workspace">
           Reset
         </Button>
+      </div>
+
+      <div className="toolbar__playback" data-testid="algorithm-playback-controls">
+        <AlgorithmPlayButton
+          isPlaying={isAlgorithmPlaying}
+          onPlay={onAlgorithmPlay}
+          onStop={onAlgorithmStop}
+        />
+        <AlgorithmSelectButton
+          algorithms={algorithms}
+          selectedId={selectedAlgorithmId}
+          disabled={isAlgorithmPlaying}
+          onSelect={onSelectAlgorithm}
+        />
+        {(isAlgorithmPlaying || algorithmStatusMessage) && (
+          <span
+            className={`toolbar__playback-status${algorithmValidationError ? ' toolbar__playback-status--error' : ''}`}
+            data-testid="algorithm-play-status"
+          >
+            {algorithmStatusMessage ?? (isAlgorithmPlaying ? 'Building…' : '')}
+          </span>
+        )}
       </div>
     </div>
   )

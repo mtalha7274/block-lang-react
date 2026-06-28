@@ -65,15 +65,44 @@ function shouldSkipHitTestElement(
   return false
 }
 
+function floatingPanelZIndex(el: Element): number {
+  const panel = el.closest('.floating-panel') as HTMLElement | null
+  if (!panel) return 0
+  const parsed = Number.parseInt(panel.style.zIndex ?? '', 10)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 export function slotTargetFromPoint(
   x: number,
   y: number,
   ignoreBlockId?: string,
 ): SlotTarget | null {
+  let best: { target: SlotTarget; z: number } | null = null
+
   for (const el of document.elementsFromPoint(x, y)) {
     if (shouldSkipHitTestElement(el, ignoreBlockId)) continue
     const target = slotTargetFromElement(el)
-    if (target) return target
+    if (!target) continue
+
+    const z = floatingPanelZIndex(el)
+    if (!best || z >= best.z) {
+      best = { target, z }
+    }
   }
-  return null
+
+  return best?.target ?? null
+}
+
+export function pickTopmostElement(elements: Element[]): Element | null {
+  if (elements.length === 0) return null
+  let best = elements[0]
+  let bestZ = floatingPanelZIndex(best)
+  for (const el of elements.slice(1)) {
+    const z = floatingPanelZIndex(el)
+    if (z >= bestZ) {
+      best = el
+      bestZ = z
+    }
+  }
+  return best
 }

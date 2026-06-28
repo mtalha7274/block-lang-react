@@ -80,7 +80,7 @@ describe('algorithm playback e2e (Chrome WebDriver)', () => {
   })
 
   it('lists at least 10 algorithms in the dropdown menu', async () => {
-    await driver.findElement(By.css('[data-testid="toolbar-algorithm-menu"]')).click()
+    await driver.findElement(By.css('[data-testid="toolbar-algorithm-select"]')).click()
     await driver.wait(
       until.elementLocated(By.css('[data-testid="algorithm-menu"]')),
       5_000,

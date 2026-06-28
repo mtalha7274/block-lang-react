@@ -184,6 +184,7 @@ function App() {
       resetProgram()
       centerMain()
     },
+    getProgram: () => program,
     attachTemplateBlockToSlot,
     ensureTopLevelFunction,
     openBlockEditor: (blockId) => openBlockEditor(blockId),
@@ -424,6 +425,7 @@ function App() {
           selectedAlgorithmId={algorithmPlayback.selectedAlgorithmId}
           isAlgorithmPlaying={algorithmPlayback.isPlaying}
           algorithmStatusMessage={algorithmPlayback.statusMessage}
+          algorithmValidationError={algorithmPlayback.validationError}
           onSelectAlgorithm={algorithmPlayback.setSelectedAlgorithmId}
           onAlgorithmPlay={() => {
             delete document.body.dataset.demoComplete
@@ -515,7 +517,7 @@ function App() {
                   }}
                   onMove={movePanel}
                   minWidth={280}
-                  zIndex={panelZ.getZ(panelId, stackZ)}
+                  zIndex={Math.max(panelZ.getZ(panelId, stackZ), stackZ)}
                   workspaceContainerRef={workspaceContainerRef}
                   onFocus={() => raisePanel(panelId)}
                   onHeaderClose={() => closeBlockEditor(blockId)}
