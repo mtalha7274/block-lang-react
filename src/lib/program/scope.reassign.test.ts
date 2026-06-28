@@ -70,4 +70,24 @@ describe('scope reassignment helpers', () => {
       valueType: 'number',
     })
   })
+
+  it('exposes function params for assign on an empty function body', () => {
+    const fn = createBlockFromKind('function') as Extract<BlockNode, { kind: 'function' }>
+    const paramRow = { id: 'param-a', name: 'amount', type: 'number' as const }
+    fn.data.params = [paramRow]
+    fn.data.body = []
+    const blocks = [fn]
+
+    const consumerId = resolveScopeConsumerForStatementBody(blocks, {
+      kind: 'statement-body',
+      parentBlockId: fn.id,
+      region: 'function',
+    })
+    expect(consumerId).toBe(fn.id)
+
+    const assignable = getAssignableInScopeValues(blocks, consumerId)
+    expect(
+      assignable.some((v) => v.blockId === functionParamSourceId(fn.id, paramRow.id)),
+    ).toBe(true)
+  })
 })

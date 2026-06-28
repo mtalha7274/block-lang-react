@@ -327,9 +327,23 @@ export function getAssignableInScopeValues(
   blocks: BlockNode[],
   consumerBlockId: string,
 ): InScopeValue[] {
-  return getInScopeValuesForConsumer(blocks, consumerBlockId).filter(
-    (value) => value.kind === 'variable' || value.kind === 'functionParam',
+  const result: InScopeValue[] = []
+  const seen = new Set<string>()
+
+  mergeUniqueInScope(
+    result,
+    seen,
+    getInScopeValuesForConsumer(blocks, consumerBlockId).filter(
+      (value) => value.kind === 'variable' || value.kind === 'functionParam',
+    ),
   )
+
+  const consumerBlock = findBlockInTree(blocks, consumerBlockId)
+  if (consumerBlock?.kind === 'function') {
+    mergeUniqueInScope(result, seen, collectFunctionParamValues(consumerBlock))
+  }
+
+  return result
 }
 
 export function resolveAssignableBinding(
