@@ -295,7 +295,6 @@ describe('algorithm programs', () => {
     expect(getVarNumber(result, 'n2')).toBe(4)
     expect(getVarNumber(result, 'n3')).toBe(5)
   })
-
   it('detects prime numbers', () => {
     const primeDoc = buildIsPrime(17)
     const compositeDoc = buildIsPrime(15)
@@ -396,6 +395,7 @@ describe('BLOCK_RULES compliance via emulation', () => {
   })
 
   it('mutates function params inside an if branch', () => {
+
     const doubleFn = func(
       'double',
       [{ id: 'p-x', name: 'x', type: 'number' }],

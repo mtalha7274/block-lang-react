@@ -64,7 +64,8 @@ function variableContract(): BlockContract<'variable'> {
 function expressionContract(): BlockContract<'expression'> {
   return {
     kind: 'expression',
-    getValueType: (block) => inferExpressionResultType(block.data.operator),
+    getValueType: (block) =>
+      block.data.resultType ?? inferExpressionResultType(block.data.operator),
     canUseAsStatement: () => false,
     canCreateValueReference: () => true,
     getMiniBlockView: (block) => {

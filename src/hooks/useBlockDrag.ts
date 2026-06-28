@@ -450,9 +450,6 @@ export function useBlockDrag({
       anchorEl: HTMLElement,
       openEditor: (anchor: HTMLElement) => void,
     ) => {
-      e.preventDefault()
-      e.stopPropagation()
-
       const startX = e.clientX
       const startY = e.clientY
       let dragStarted = false

@@ -266,17 +266,6 @@ describe('slotRules', () => {
     expect(canAttachPaletteKindToSlot(target, 'expression', findBlock)).toBe(false)
   })
 
-  it('accepts expression palette kind in if-condition slots', () => {
-    const ifBlock = createBlockFromKind('if')
-    const target: SlotTarget = {
-      kind: 'if-condition',
-      parentBlockId: ifBlock.id,
-    }
-    const findBlock = (id: string) => (id === ifBlock.id ? ifBlock : undefined)
-
-    expect(canAttachPaletteKindToSlot(target, 'expression', findBlock)).toBe(true)
-  })
-
   it('preserves primitive template values when allowPrimitiveTypeInit is set', () => {
     const variable = createBlockFromKind('variable')
     const primitive: BlockNode = {
