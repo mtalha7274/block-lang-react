@@ -101,6 +101,14 @@ export function FloatingPanel({
     return el?.getBoundingClientRect() ?? null
   }, [workspaceContainerRef])
 
+  const handlePanelFocus = useCallback(
+    (e: React.PointerEvent) => {
+      if ((e.target as HTMLElement).closest('button')) return
+      onFocus?.()
+    },
+    [onFocus],
+  )
+
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if ((e.target as HTMLElement).closest('button')) return
@@ -154,6 +162,7 @@ export function FloatingPanel({
       id={id}
       className="floating-panel"
       data-testid={id}
+      onPointerDownCapture={handlePanelFocus}
       style={{
         left: position.x,
         top: position.y,

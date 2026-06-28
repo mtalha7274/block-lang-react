@@ -119,9 +119,16 @@ function App() {
     [panelZ],
   )
 
-  const raisePanel = useCallback(
+  const focusPanel = useCallback(
     (panelId: string) => {
       panelZ.raise(panelId)
+      if (panelId.startsWith('blockEditor-')) {
+        const blockId = panelId.slice('blockEditor-'.length)
+        setEditorStack((prev) => {
+          if (!prev.includes(blockId)) return prev
+          return [...prev.filter((id) => id !== blockId), blockId]
+        })
+      }
     },
     [panelZ],
   )
@@ -137,13 +144,13 @@ function App() {
 
   const openBlockEditor = useCallback(
     (blockId: string, anchorEl?: HTMLElement | null) => {
-      const editorBlockId = blockId
+      const editorBlockId = getEditorTargetBlockId(blockId)
       const panelId = `blockEditor-${editorBlockId}`
       const siblingEditorsToClose = getSiblingEditorIdsToClose(program.blocks, blockId)
 
       setEditorStack((prev) => {
         const withoutSiblings = prev.filter((id) => !siblingEditorsToClose.has(id))
-        const withoutSelf = withoutSiblings.filter((id) => id !== editorBlockId)
+        if (withoutSiblings.includes(editorBlockId)) return withoutSiblings
 
         if (
           anchorEl &&
@@ -158,12 +165,12 @@ function App() {
           movePanel(panelId, pos.x, pos.y)
         }
 
-        return [...withoutSelf, editorBlockId]
+        return [...withoutSiblings, editorBlockId]
       })
 
-      raisePanel(panelId)
+      focusPanel(panelId)
     },
-    [movePanel, panelPositions, program.blocks, raisePanel],
+    [getEditorTargetBlockId, movePanel, panelPositions, program.blocks, focusPanel],
   )
 
   const attachNewBlockFromPalette = useCallback(
@@ -488,7 +495,7 @@ function App() {
               minWidth={PALETTE_PANEL_WIDTH}
               zIndex={panelZ.getZ('palette', 20)}
               workspaceContainerRef={workspaceContainerRef}
-              onFocus={() => raisePanel('palette')}
+              onFocus={() => focusPanel('palette')}
             >
               <BlockPalette
                 onDragStart={drag.handlePaletteDragStart}
@@ -521,7 +528,7 @@ function App() {
                   minWidth={280}
                   zIndex={Math.max(panelZ.getZ(panelId, stackZ), stackZ)}
                   workspaceContainerRef={workspaceContainerRef}
-                  onFocus={() => raisePanel(panelId)}
+                  onFocus={() => focusPanel(panelId)}
                   onHeaderClose={() => closeBlockEditor(blockId)}
                 >
                   <BlockEditorPanel
@@ -544,7 +551,7 @@ function App() {
               minWidth={INSPECTOR_PANEL_WIDTH}
               zIndex={panelZ.getZ('inspector', 20)}
               workspaceContainerRef={workspaceContainerRef}
-              onFocus={() => raisePanel('inspector')}
+              onFocus={() => focusPanel('inspector')}
             >
               <RightPanel
                 activeTab={activePanelTab}
