@@ -30,4 +30,4 @@ run('git push -f origin gh-pages', worktree)
 
 rmSync(worktree, { recursive: true, force: true })
 
-console.log('Deployed to https://mtalha7274.github.io/block-lang-react/')
+console.log('Deployed to https://blocklang.pocketmicros.com/')
