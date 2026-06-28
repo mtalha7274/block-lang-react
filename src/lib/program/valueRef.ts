@@ -161,12 +161,9 @@ export function syncValueRefLabels(blocks: BlockNode[]): BlockNode[] {
     if (paramRef) {
       const hadError = block.visual?.state === 'error'
       return {
-        ...block,
-        data: {
-          ...block.data,
-          label: paramRef.param.name,
-          valueType: paramRef.param.type,
-        },
+        id: block.id,
+        kind: 'variable',
+        data: { name: paramRef.param.name, valueType: paramRef.param.type },
         visual: hadError
           ? { ...block.visual, state: 'default', errorMessage: undefined }
           : block.visual,
@@ -182,6 +179,18 @@ export function syncValueRefLabels(blocks: BlockNode[]): BlockNode[] {
           state: 'error',
           errorMessage: 'Referenced value was removed',
         },
+      }
+    }
+
+    if (source.kind === 'variable') {
+      const hadError = block.visual?.state === 'error'
+      return {
+        id: block.id,
+        kind: 'variable',
+        data: { name: source.data.name, valueType: source.data.valueType },
+        visual: hadError
+          ? { ...block.visual, state: 'default', errorMessage: undefined }
+          : block.visual,
       }
     }
 
